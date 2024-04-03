@@ -1,24 +1,18 @@
 package com.stockbackend.utils;
 
-import com.stockbackend.configure.DruidConfig;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.stereotype.Component;
+
 import javax.sql.DataSource;
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 
 @Component
 public class JDBCUtils {
 
-
     private DataSource dataSource;
+
     @Autowired
-    public JDBCUtils(DataSource dataSource){
+    public JDBCUtils(DataSource dataSource) {
         this.dataSource = dataSource;
     }
 
