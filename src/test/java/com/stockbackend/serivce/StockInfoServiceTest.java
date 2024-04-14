@@ -4,6 +4,7 @@ import com.google.gson.*;
 import com.stockbackend.utils.DateUtils;
 import com.stockbackend.utils.DateUtilsTest;
 import com.stockbackend.utils.JDBCUtils;
+import lombok.extern.slf4j.Slf4j;
 import net.minidev.json.JSONObject;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
 import org.apache.hc.core5.http.ParseException;
@@ -31,6 +32,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 @SpringBootTest
+@Slf4j
 public class StockInfoServiceTest {
     @Autowired
     private JDBCUtils jdbcUtils;
@@ -206,9 +208,8 @@ public class StockInfoServiceTest {
             stockCodeQuery = "0." + stockCode;
             formatCode = stockCode + ".SZ";
         }
-        System.out.println(Thread.currentThread().getName());
         String url = "http://push2his.eastmoney.com/api/qt/stock/kline/get?fields1=f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f12,f13" +
-                "&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&beg=0&end=20500101" +
+                "&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&beg=20210101&end=20500101" +
                 "&rtntype=6&secid=" + stockCodeQuery + "&klt=101&fqt=1";
         try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
             HttpGet getRequest = new HttpGet(new URI(url));
@@ -261,18 +262,19 @@ public class StockInfoServiceTest {
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            System.out.println(stockCode);
+            ;
         }
     }
 
     @Test
     public void runGetHisStockDate() {
-        getHisStockData("430090");
+        getHisStockData("300337");
     }
 
     @Test
     public void getAllHisStockData() {
-        ExecutorService executor = Executors.newFixedThreadPool(2);
+        ExecutorService executor = Executors.newFixedThreadPool(15);
         final int batchSize = 100; // 每次提交的任务数量
         List<Future<?>> futures = new ArrayList<>();
 
@@ -307,4 +309,13 @@ public class StockInfoServiceTest {
         }
     }
 
+    @Test
+    public void logTest() {
+        Integer a = 0;
+        Integer b=1;
+//        System.out.println(b/a);
+        log.info("hello I am log info 你好我是日志");
+    }
+
 }
+

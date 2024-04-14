@@ -13,3 +13,7 @@ spring:
     minIdle: 5
     maxActive: 20
     maxWait: 600000
+logging:
+  level:
+    root: info
+  config: classpath:logback-spring.xml

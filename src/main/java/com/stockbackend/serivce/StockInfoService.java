@@ -3,6 +3,8 @@ package com.stockbackend.serivce;
 import com.google.gson.JsonElement;
 import com.stockbackend.utils.DateUtils;
 import com.stockbackend.utils.JDBCUtils;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.hc.client5.http.config.RequestConfig;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
 import org.apache.hc.core5.http.ParseException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,6 +16,7 @@ import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
+import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.net.URI;
@@ -27,11 +30,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.concurrent.*;
 
+@Service
+@Slf4j
 public class StockInfoService {
     @Autowired
     private JDBCUtils jdbcUtils;
@@ -151,13 +153,22 @@ public class StockInfoService {
         }
     }
 
-    // 获取指定日期的交易数据
-    public void getDailyTradeData(String tradeDate) throws Exception {
-        String timestamp = String.valueOf(Instant.now().toEpochMilli());
-        DateUtils stockInfoService = new DateUtils();
-        String url = "http://94.push2.eastmoney.com/api/qt/clist/get?pn=1&pz=99999&po=1&np=1&ut=bd1d9ddb04089700cf9c27f6f7426281" +
-                "&fltt=2&invt=2&wbp2u=%7C0%7C0%7C0%7Cweb&fid=f3&fs=m:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23,m:0+t:81+s:2048" +
-                "&fields=f12,f17,f2,f15,f16,f5,f3,f18,f4,f7,f6&_=" + timestamp;
+    // 获取指定日期与股票代码的交易数据
+    public void getDailyTradeData(String begTradeDate, String stockCode) {
+        String stockCodeQuery = stockCode;
+        String formatCode = stockCode;
+        if (stockCode.startsWith("6")) {
+            stockCodeQuery = "1." + stockCode;
+            formatCode = stockCode + ".SH";
+        } else {
+            stockCodeQuery = "0." + stockCode;
+            formatCode = stockCode + ".SZ";
+        }
+        begTradeDate = dut.formatDateString(begTradeDate, "yyyyMMdd");
+        String url = "http://push2his.eastmoney.com/api/qt/stock/kline/get?fields1=f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f12,f13" +
+                "&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&%s=0&end=%s" +
+                "&rtntype=6&secid=%s&klt=101&fqt=1";
+        url = String.format(url, begTradeDate, begTradeDate, stockCodeQuery);
         try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
             HttpGet getRequest = new HttpGet(new URI(url));
             CloseableHttpResponse response = httpClient.execute(getRequest);
@@ -165,64 +176,38 @@ public class StockInfoService {
                 String jsonResponse = EntityUtils.toString(response.getEntity());
                 JsonParser jsonParser = new JsonParser();
                 JsonObject jsonObject = jsonParser.parse(jsonResponse).getAsJsonObject();
-                JsonArray datas = jsonObject.getAsJsonObject("data").getAsJsonArray("diff");
+                JsonArray datas = jsonObject.getAsJsonObject("data").getAsJsonArray("klines");
                 List<Object[]> insertData = new ArrayList<>();
-                tradeDate = dut.formatDateString(tradeDate, "yyyyMMdd");
-
-                ZoneId zone = ZoneId.of("Asia/Shanghai");
-                // 通过ZoneId来获取东八区的当前时间
-                ZonedDateTime currentDateTime = ZonedDateTime.now(zone);
-                // 格式化输出日期时间
-                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd");
-                String localDate = currentDateTime.format(formatter);
-                // 如果交易日日期和本地时间不同说明今天不是交易日
-                if (!tradeDate.equals(localDate)) {
-                    return;
-                }
-
+                String tradeDate = "";
+                deleteTradeDataWithDateAndCode(begTradeDate,stockCode);
                 for (JsonElement data : datas) {
-                    JsonObject item = data.getAsJsonObject();
-                    String stockCode = item.get("f12").getAsString();
-                    if (stockCode.startsWith("6")) {
-                        stockCode += ".SH";
-                    } else {
-                        stockCode += ".SZ";
-                    }
-                    if (!stockCode.startsWith("60") && !stockCode.startsWith("00")) {
-                        continue;
-                    }
-                    if (Objects.equals(item.get("f17").getAsString(), "-")) {
-                        continue;
-                    }
-                    double openPrice = item.get("f17").getAsDouble();
-                    if (Double.isNaN(openPrice)) {
-                        continue;
-                    }
-                    double closePrice = item.get("f2").getAsDouble();
-                    double highPrice = item.get("f15").getAsDouble();
-                    double lowPrice = item.get("f16").getAsDouble();
-                    double volume = item.get("f5").getAsDouble();
-                    double changePrice = item.get("f4").getAsDouble();
-                    double pctChg = item.get("f3").getAsDouble();
-                    double maxPctChg = item.get("f7").getAsDouble();
-                    double amount = item.get("f6").getAsDouble();
-
-                    Object[] dataItem = {stockCode, openPrice, closePrice, highPrice, lowPrice, volume,
-                            changePrice, tradeDate, pctChg, maxPctChg, amount};
-                    insertData.add(dataItem);
+                    String dataString = data.getAsString();
+                    String[] dataItem = dataString.split(",");
+                    tradeDate = dut.formatDateString(dataItem[0], "yyyyMMdd");
+                    insertData.add(new Object[]{formatCode
+                            , tradeDate
+                            , Float.parseFloat(dataItem[1])
+                            , Float.parseFloat(dataItem[2])
+                            , Float.parseFloat(dataItem[3])
+                            , Float.parseFloat(dataItem[4])
+                            , Integer.parseInt(dataItem[5])
+                            , Float.parseFloat(dataItem[6])
+                            , Float.parseFloat(dataItem[7])
+                            , Float.parseFloat(dataItem[8])
+                            , Float.parseFloat(dataItem[9])
+                    });
                 }
-                //清空原来的已有的数据
-                deleteTradeDataWithDate(tradeDate);
-
-                Connection connection = jdbcUtils.getConnection();
-                String sql = "INSERT IGNORE INTO StockTradeInfo (stockCode, open, close, high, low, vol, changePrice, tradeDate, pct_chg, max_pct_chg, amount) " +
-                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-                connection.setAutoCommit(false);
-                try (PreparedStatement statement = connection.prepareStatement(sql)) {
+                String sql = "INSERT INTO StockTradeInfo (stockCode,tradeDate, open, close, high, low, vol" +
+                        ", amount, max_pct_chg, pct_chg, changeprice) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                try (Connection connection = jdbcUtils.getConnection();
+                     PreparedStatement statement = connection.prepareStatement(sql);) {
+                    connection.setAutoCommit(false);
                     for (Object[] dataItem : insertData) {
                         for (int i = 0; i < dataItem.length; i++) {
-                            if (dataItem[i] instanceof Double) {
-                                statement.setDouble(i + 1, (Double) dataItem[i]);
+                            if (dataItem[i] instanceof Float) {
+                                statement.setDouble(i + 1, (Float) dataItem[i]);
+                            } else if (dataItem[i] instanceof Integer) {
+                                statement.setInt(i + 1, (Integer) dataItem[i]);
                             } else {
                                 statement.setString(i + 1, (String) dataItem[i]);
                             }
@@ -230,11 +215,18 @@ public class StockInfoService {
                         statement.addBatch();
                     }
                     statement.executeBatch();
+
                     connection.commit();
+                } catch (Exception e) {
+                    e.printStackTrace();
                 }
             }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
+
+
     // 获取股票基础信息
     public void getBasicStockInfo() {
         String url = "http://70.push2.eastmoney.com/api/qt/clist/get?pn=1&pz=99999&po=1&np=1&fltt=2&invt=2" +
@@ -395,6 +387,18 @@ public class StockInfoService {
     //清空指定日期数据
     public void deleteTradeDataWithDate(String tradeDate) {
         String sql = String.format("delete table stocktradeinfo where tradeDate=%s", tradeDate);
+        try (Connection connection = jdbcUtils.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)
+        ) {
+            statement.execute();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    //清空指定日期和代码的数据
+    public void deleteTradeDataWithDateAndCode(String tradeDate, String stockCode) {
+        String sql = String.format("delete table stocktradeinfo where tradeDate=%s and stockCode like %s%%", tradeDate, stockCode);
         try (Connection connection = jdbcUtils.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)
         ) {
