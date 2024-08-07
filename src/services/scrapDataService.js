@@ -1,14 +1,13 @@
-var request = require("request");
+let request = require("request");
 const stockModel = require("../models/stockModel.js");
 
-//设计原则：各服务应保持独立，在controll层再进行组合
 
 //获取最新的交易日期
-var getLastestTradeDateOptions = {
+let getLastestTradeDateOptions = {
   method: "GET",
   url: "https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=0.399001&fields1=f1&fields2=f51&klt=101&fqt=1&end=20500101&lmt=1",
 };
-const getLastestTradeDate = () => {
+exports.getLastestTradeDate = () => {
   return new Promise((resolve, reject) => {
     request(getLastestTradeDateOptions, (error, response) => {
       if (error) {
@@ -22,11 +21,11 @@ const getLastestTradeDate = () => {
 };
 
 //获取全体个股当日数据
-var getAllStcokDailyTradeDataOptions = {
+let getAllStcokDailyTradeDataOptions = {
   method: "GET",
   url: "https://72.push2.eastmoney.com/api/qt/clist/get?pn=1&pz=12000&po=1&np=1&fltt=2&invt=0&dect=1&fid=f3&fs=m:0+t:6,m:0+t:80,m:1+t:2&fields=f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f12,f13,f14,f15,f16,f17,f18,f20,f21,f23,f24,f25,f22,f11,f62,f128,f136,f115,f152",
 };
-const getAllStcokDailyTradeData = () => {
+exports.getAllStcokDailyTradeData = () => {
   return new Promise((resolve, reject) => {
     request(getAllStcokDailyTradeDataOptions, (error, response) => {
       if (error) {
@@ -39,14 +38,59 @@ const getAllStcokDailyTradeData = () => {
 };
 
 //将全体个股写入数据库
-const saveAllStcokDailyTradeData = async (latestTradeDate,data) => {
+exports.saveAllStcokDailyTradeData = async (latestTradeDate, data) => {
   const dataJson = JSON.parse(data);
   const diffData = dataJson.data.diff;
   stockModel.setAllStockDailyTradeData(latestTradeDate, diffData);
 };
 
-module.exports = {
-  getAllStcokDailyTradeData,
-  getLastestTradeDate,
-  saveAllStcokDailyTradeData,
+//同步每日全体个股基本数据到基本信息表
+exports.syncStockBasicInfo = async () => {
+  await stockModel.setAllStockBasicInfo();
+};
+
+//获取股票基本信息
+exports.getAllStockBasicInfo = async () => {
+  const result = await stockModel.getAllStockBasicInfo();
+  return result;
+};
+
+//获取个股历史数据
+exports.getStockHistoryTradeData = async (secid) => {
+  secid = secid.includes(".")
+    ? secid
+    : secid.startsWith("0") || secid.startsWith("3")
+    ? "0." + secid
+    : "1." + secid;
+  const url = `https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=${secid}&fields1=f1,f3,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=1&end=20500101&beg=0`;
+
+  let options = {
+    method: "GET",
+    url: url,
+  };
+
+  return new Promise((resolve, reject) => {
+    request(options, (error, response) => {
+      if (error) {
+        reject(error);
+      } else {
+        resolve(response.body);
+      }
+    });
+  });
+};
+
+//将个股历史数据写入数据库
+exports.saveStockHistoryTradeData = async (data,connection) => {
+  const dataJson = JSON.parse(data);
+  const klines = dataJson.data.klines;
+  const StockCode = dataJson.data.code;
+  const StockName = dataJson.data.name;
+  try {
+    await stockModel.setStockHistoryTradeData(StockCode, StockName, klines,connection);
+  } catch (error) {
+    throw new Error(
+      "Error Excuting setAllStockDailyTradeData::" + error.message
+    );
+  }
 };
