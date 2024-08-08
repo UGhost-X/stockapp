@@ -1,0 +1,30 @@
+1. 目录按照以下规则划分
+project-root/
+|-- src/
+|   |-- controllers/
+|   |   |-- stockController.js
+|   |-- models/
+|   |   |-- stockModel.js
+|   |-- routes/
+|   |   |-- stockRoutes.js
+|   |-- services/
+|   |   |-- stockService.js
+|   |-- app.js
+|   |-- index.js
+|-- config/
+|   |-- dbConfig.js
+|-- node_modules/
+|-- package.json
+|-- .gitignore
+
+1.1 分层关系
+models层：控制与数据库的交互
+services：编写业务逻辑，调用model层接口，各服务保持独立无耦合
+controllers层：编排servics中的服务，
+routes层：提供路由，开放controllers中的服务
+
+2. 数据库表命名
+2.1 按照下滑线的形式连接各个单词
+
+3. nodejs 项目命名规范
+3.1 目录、变量、函数采用驼峰形式命名

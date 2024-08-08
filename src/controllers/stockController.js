@@ -18,23 +18,32 @@ exports.getAllStockDailyTradeDataFromDF = async (req, res) => {
 //根据提供的股票代码获取数据
 exports.getStockHistoryTradeDataFromDF = async (req, res) => {
   try {
-    let { secid } = req.query;
+    let { secid, startDate, endData, lmt } = req.query;
     secid =
       secid.startsWith("0") || secid.startsWith("3")
         ? "0." + secid
         : "1." + secid;
-    const data = await stockService.getStockHistoryTradeData(secid);
-    await stockService.saveStockHistoryTradeData(data);
+    const data = await stockService.getStockHistoryTradeData(
+      secid,
+      startDate,
+      endData,
+      lmt
+    );
+    const connection = await stockModel.getMySqlConnection(); // 创建数据库连接
+    await stockService.saveStockHistoryTradeData(data, connection);
     res.status(200).json({ message: "get stock history trade data success" });
   } catch (error) {
     res
       .status(500)
       .json({ message: "get stock history trade data failed:::" + error });
+  } finally {
+    connection.end();
   }
 };
 
 // 获取股票历史数据并保存到数据库
 exports.getStockHistoryTradeDataFromDFByMultilLine = async (req, res) => {
+  let { startDate, endData, lmt } = req.query;
   const connection = await stockModel.getMySqlConnection(); // 创建数据库连接
   try {
     const stockBasicInfo = await stockService.getAllStockBasicInfo(); // 传递连接
@@ -46,10 +55,14 @@ exports.getStockHistoryTradeDataFromDFByMultilLine = async (req, res) => {
       stockCodes.map((code) =>
         limit(async () => {
           try {
-            const data = await stockService.getStockHistoryTradeData(code); // 传递连接
-            console.log("print log::::::", "开始下载::" + code);
+            const data = await stockService.getStockHistoryTradeData(
+              code,
+              startDate,
+              endData,
+              lmt
+            ); // 传递连接
             await stockService.saveStockHistoryTradeData(data, connection); // 传递连接
-            console.log("print log::::::", "下载::" + code+" 完成");
+            console.log("print log::::::", "下载::" + code + " 完成");
           } catch (error) {
             console.error(`Error fetching data for ${code}:`, error);
           }
@@ -70,6 +83,6 @@ exports.syncStockBasicInfoFromDailyTradeData = async (req, res) => {
     await stockService.syncStockBasicInfo();
     res.status(200).json({ message: "get stock history trade data success" });
   } catch (error) {
-    res.status(500).json({ message: "get stock history trade data failed" });
+    res.status(500).json({ message: "get stock history trade data failed::"+error.message });
   }
 };

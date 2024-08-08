@@ -3,15 +3,22 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prod": "export  NODE_ENV=prod && node .\\src\\index.js",
+    "dev": "set NODE_ENV=dev && nodemon .\\src\\index.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "axios": "^1.7.3",
+    "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "mysql": "^2.18.1",
-    "request": "^2.88.2"
+    "p-limit": "^3.1.0",
+    "request": "^2.88.2",
+    "stockbackend": "file:",
+    "util": "^0.12.5"
   }
 }

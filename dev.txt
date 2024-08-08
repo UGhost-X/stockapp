@@ -1,0 +1,39 @@
+f51：trade_date:交易日期
+f52：open：开盘价
+f53: close：收盘价
+f54: high:最高价
+f55:low：最低价
+f56:vol：成交量
+f57:amount：成交额
+f58:pct_chg_ratio：振幅(最高价/最低价）
+f59:pct_ratio：涨跌幅
+f60:pct_chg：涨跌额
+f61:chg_ratio：换手率
+
+
+stockCode, open, close, high, low, vol, changePrice, tradeDate, pct_chg, max_pct_chg, amount
+
+
+    pct_ratio DECIMAL(5, 2) NOT NULL COMMENT '涨跌幅',
+    pct_chg DECIMAL(5, 2) NOT NULL COMMENT '涨跌额',
+
+
+item.f12, // stock_code
+stockDate, // stock_date
+item.f14, // stock_ch_name
+item.f2, // close
+item.f3, // pct_ratio
+item.f4, // pct_chg
+item.f5, // volume
+item.f6, // amount
+item.f7, // pct_chg_ratio
+item.f8, // chg_ratio
+item.f9, // mp_ratio
+item.f10, // amount_ratio
+item.f15, // high
+item.f16, // low
+item.f17, // open
+item.f18, // pre_close
+item.f20, // total_market_value
+item.f21, // floating_market_value
+item.f23, // market_net_value

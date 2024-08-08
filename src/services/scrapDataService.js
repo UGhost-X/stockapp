@@ -1,7 +1,6 @@
 let request = require("request");
 const stockModel = require("../models/stockModel.js");
 
-
 //获取最新的交易日期
 let getLastestTradeDateOptions = {
   method: "GET",
@@ -56,14 +55,16 @@ exports.getAllStockBasicInfo = async () => {
 };
 
 //获取个股历史数据
-exports.getStockHistoryTradeData = async (secid) => {
+exports.getStockHistoryTradeData = async (secid, startDate, endDate, lmt) => {
   secid = secid.includes(".")
     ? secid
     : secid.startsWith("0") || secid.startsWith("3")
     ? "0." + secid
     : "1." + secid;
-  const url = `https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=${secid}&fields1=f1,f3,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=1&end=20500101&beg=0`;
-
+  startDate = startDate || 0;
+  endDate = endDate || 20250101;
+  lmt = lmt || 12000;
+  const url = `https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=${secid}&fields1=f1,f3,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=1&end=${endDate}&beg=${startDate}&lmt=${lmt}`;
   let options = {
     method: "GET",
     url: url,
@@ -81,16 +82,23 @@ exports.getStockHistoryTradeData = async (secid) => {
 };
 
 //将个股历史数据写入数据库
-exports.saveStockHistoryTradeData = async (data,connection) => {
+exports.saveStockHistoryTradeData = async (data, connection) => {
   const dataJson = JSON.parse(data);
   const klines = dataJson.data.klines;
-  const StockCode = dataJson.data.code;
-  const StockName = dataJson.data.name;
+  let stockCode = dataJson.data.code;
+  const stockName = dataJson.data.name;
+  stockCode = stockName == "创业板指" || stockName == "深证成指" ? "0." + stockCode : stockCode;
+  stockCode = stockName == "上证指数" ? "1." + stockCode : stockCode;
   try {
-    await stockModel.setStockHistoryTradeData(StockCode, StockName, klines,connection);
+    await stockModel.setStockHistoryTradeData(
+      stockCode,
+      stockName,
+      klines,
+      connection
+    );
   } catch (error) {
     throw new Error(
-      "Error Excuting setAllStockDailyTradeData::" + error.message
+      "Error Excuting saveStockHistoryTradeData::" + error.message
     );
   }
 };

@@ -8,6 +8,7 @@ exports.getMySqlConnection = async () => {
 
 //同步股票基本信息
 exports.setAllStockBasicInfo = async () => {
+  console.log('print dbConfig::::::', dbConfig);
   const connection = mysql.createConnection(dbConfig);
   const query = util.promisify(connection.query).bind(connection);
   const beginTransaction = util
@@ -22,10 +23,33 @@ exports.setAllStockBasicInfo = async () => {
   const insertQuery = `
     insert into stock_basic_info  select stock_code,stock_ch_name,null,created_date,update_date from daily_trades;
   `;
+  //需要手动补充上上证、深证、创业版的基本信息
+  const insertQueryByExtraInfo = `
+    insert into stock_basic_info(stock_code,stock_ch_name) values ?;
+  `
+  const insertQueryByExtraInfoData = [
+    ['1.000001', '上证指数'],
+    ['0.399001', '深证成指'],
+    ['0.399006', '创业板指']
+  ];
+
+  //同步上市日期
+  const updateListingDataQuery = `
+  UPDATE stock_basic_info a
+  JOIN (
+    SELECT stock_code, MIN(trade_date) AS stock_listing_date
+    FROM stock_history_trade
+    GROUP BY stock_code
+  ) b ON a.stock_code = b.stock_code
+  SET a.stock_listing_date = b.stock_listing_date;
+  `
+
   try {
     await beginTransaction();
     await query(truncateQuery);
     await query(insertQuery);
+    await query(insertQueryByExtraInfo,[insertQueryByExtraInfoData]);
+    await query(updateListingDataQuery);
     await commit();
   } catch (error) {
     throw new Error("Error executing setAllStockBasicInfo::" + error.message);
@@ -55,19 +79,20 @@ exports.getAllStockBasicInfo = async () => {
 exports.getAllStockDailyTradeData = async () => {
   const connection = mysql.createConnection(dbConfig);
   const query = util.promisify(connection.query).bind(connection);
-  const beginTransaction = util
-    .promisify(connection.beginTransaction)
-    .bind(connection);
-  const commit = util.promisify(connection.commit).bind(connection);
   const end = util.promisify(connection.end).bind(connection);
-  return new Promise((resolve, reject) => {
-    connection.query("SELECT * FROM daily_trades", (error, results, fields) => {
-      if (error) {
-        reject(error);
-      } else {
-        resolve(results);
+  return new Promise(async (resolve, reject) => {
+    await query(
+      "SELECT * FROM daily_trades",
+      async (error, results, fields) => {
+        if (error) {
+          await end();
+          reject(error);
+        } else {
+          await end();
+          resolve(results);
+        }
       }
-    });
+    );
   });
 };
 
@@ -82,12 +107,30 @@ exports.setAllStockDailyTradeData = async (stockDate, data) => {
   const end = util.promisify(connection.end).bind(connection);
   // 准备批量插入的数据
   const insertQuery = `
-      INSERT IGNORE INTO daily_trades (
+      INSERT INTO daily_trades (
         stock_code, stock_date, stock_ch_name, close, pct_ratio, pct_chg,
         volume, amount, pct_chg_ratio, chg_ratio, mp_ratio, amount_ratio,
         high, low, open, pre_close, total_market_value, floating_market_value,
         market_net_value
-      ) VALUES ?;
+      ) VALUES ?
+      ON DUPLICATE KEY UPDATE
+        stock_ch_name = VALUES(stock_ch_name),
+        close = VALUES(close),
+        pct_ratio = VALUES(pct_ratio),
+        pct_chg = VALUES(pct_chg),
+        volume = VALUES(volume),
+        amount = VALUES(amount),
+        pct_chg_ratio = VALUES(pct_chg_ratio),
+        chg_ratio = VALUES(chg_ratio),
+        mp_ratio = VALUES(mp_ratio),
+        amount_ratio = VALUES(amount_ratio),
+        high = VALUES(high),
+        low = VALUES(low),
+        open = VALUES(open),
+        pre_close = VALUES(pre_close),
+        total_market_value = VALUES(total_market_value),
+        floating_market_value = VALUES(floating_market_value),
+        market_net_value = VALUES(market_net_value);
     `;
 
   // 构建批量插入的数组
@@ -124,7 +167,12 @@ exports.setAllStockDailyTradeData = async (stockDate, data) => {
 };
 
 // 写入个股历史数据
-exports.setStockHistoryTradeData = async (stockCode, stockName, data, connection) => {
+exports.setStockHistoryTradeData = async (
+  stockCode,
+  stockName,
+  data,
+  connection
+) => {
   // const connection = mysql.createConnection(dbConfig);
   const query = util.promisify(connection.query).bind(connection);
   const beginTransaction = util
@@ -156,7 +204,6 @@ exports.setStockHistoryTradeData = async (stockCode, stockName, data, connection
       parseFloat(fields[10]).toFixed(2), // chg_ratio: 换手率 (成交量 / 成交额)
     ];
   });
-
   try {
     await beginTransaction();
     await query(insertQuery, [batchValues]);
@@ -165,5 +212,5 @@ exports.setStockHistoryTradeData = async (stockCode, stockName, data, connection
     throw new Error(
       "Error executing setStockHistoryTradeData::" + error.message
     );
-  } 
+  }
 };

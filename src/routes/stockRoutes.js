@@ -18,7 +18,7 @@ router.get(
   stockController.syncStockBasicInfoFromDailyTradeData
 );
 //使用多线程获取所有个股历史数据
-router.get(
+router.post(
   "/getStockHistoryTradeDataFromDFByMultilLine",
   stockController.getStockHistoryTradeDataFromDFByMultilLine
 );
