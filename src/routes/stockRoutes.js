@@ -23,4 +23,9 @@ router.post(
   stockController.getStockHistoryTradeDataFromDFByMultilLine
 );
 
+router.post(
+  "/getExceptStockStateFromDF",
+  stockController.getExceptStockStateFromDF
+);
+
 module.exports = router;

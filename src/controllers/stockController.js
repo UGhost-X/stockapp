@@ -62,9 +62,11 @@ exports.getStockHistoryTradeDataFromDFByMultilLine = async (req, res) => {
               lmt
             ); // 传递连接
             await stockService.saveStockHistoryTradeData(data, connection); // 传递连接
-            console.log("print log::::::", "下载::" + code + " 完成");
           } catch (error) {
-            console.error(`Error fetching data for ${code}:`, error);
+            global.logger.error(
+              `Error fetching data for ${code}:`,
+              error.message
+            );
           }
         })
       )
@@ -73,18 +75,37 @@ exports.getStockHistoryTradeDataFromDFByMultilLine = async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: "get stock history trade data failed" });
   } finally {
+    global.logger.info("########----  数据已经下载完成  ----#####");
     connection.commit();
     connection.end(); // 确保在所有操作完成后关闭连接
   }
 };
 
+//从每日交易数据同步数据至基础信息表
 exports.syncStockBasicInfoFromDailyTradeData = async (req, res) => {
   try {
     await stockService.syncStockBasicInfo();
     res.status(200).json({ message: "get stock history trade data success" });
   } catch (error) {
-    res.status(500).json({ message: "get stock history trade data failed::"+error.message });
+    res.status(500).json({
+      message: "get stock history trade data failed::" + error.message,
+    });
   }
 };
 
-
+//获取个股交易状态
+exports.getExceptStockStateFromDF = async (req, res) => {
+  const {stockCode} = req.query;
+  try {
+    const stock_trade_status = await stockService.getExceptStockState(stockCode);
+    res
+      .status(200)
+      .json({
+        message: "get stock trade status success::" + stock_trade_status,
+      });
+  } catch (error) {
+    res.status(500).json({
+      message: "get stock trade status failed::" + error.message,
+    });
+  }
+};

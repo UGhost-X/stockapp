@@ -118,3 +118,28 @@ exports.saveStockHistoryTradeData = async (data, connection) => {
     );
   }
 };
+
+//获取异常个股交易状态
+exports.getExceptStockState = async (code) => {
+  const url = `http://gbapi.eastmoney.com/webarticlelist/api/Article/Articlelist?code=${code}`;
+  let options = {
+    method: "GET",
+    url: url,
+  };
+  try {
+    const data = await new Promise((resolve, reject) => {
+      request(options, (error, response) => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve(response.body);
+        }
+      });
+    });
+    const dataJson = JSON.parse(data);
+    return dataJson.bar_info.Status;
+
+  } catch (error) {
+    throw new Error("Error Excuting getExceptStockState::"+error.message)
+  }
+};
