@@ -1,5 +1,6 @@
 let request = require("request");
 const stockModel = require("../models/stockModel.js");
+const logger = require("../../config/logconfig.js");
 
 //获取最新的交易日期
 let getLastestTradeDateOptions = {
@@ -19,12 +20,13 @@ exports.getLastestTradeDate = () => {
   });
 };
 
-//获取全体个股当日数据
-let getAllStcokDailyTradeDataOptions = {
-  method: "GET",
-  url: "https://72.push2.eastmoney.com/api/qt/clist/get?pn=1&pz=12000&po=1&np=1&fltt=2&invt=0&dect=1&fid=f3&fs=m:0+t:6,m:0+t:80,m:1+t:2&fields=f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f12,f13,f14,f15,f16,f17,f18,f20,f21,f23,f24,f25,f22,f11,f62,f128,f136,f115,f152",
-};
+//获取所有股票当日交易数据
 exports.getAllStcokDailyTradeData = () => {
+  //获取全体个股当日数据
+  let getAllStcokDailyTradeDataOptions = {
+    method: "GET",
+    url: "https://72.push2.eastmoney.com/api/qt/clist/get?pn=1&pz=12000&po=1&np=1&fltt=2&invt=0&dect=1&fid=f3&fs=m:0+t:6,m:0+t:80,m:1+t:2&fields=f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f12,f13,f14,f15,f16,f17,f18,f20,f21,f23,f24,f25,f22,f11,f62,f128,f136,f115,f152",
+  };
   return new Promise((resolve, reject) => {
     request(getAllStcokDailyTradeDataOptions, (error, response) => {
       if (error) {
@@ -36,11 +38,22 @@ exports.getAllStcokDailyTradeData = () => {
   });
 };
 
+//同步每日个股数据到历史交易数据
+exports.syncDailyTradeData2HistoryTradeData = async (tradeData) => {
+  await stockModel.insertDailyTradeData2HistoryTradeData(tradeData);
+};
+
 //将全体个股写入数据库
 exports.saveAllStcokDailyTradeData = async (latestTradeDate, data) => {
   const dataJson = JSON.parse(data);
   const diffData = dataJson.data.diff;
-  stockModel.setAllStockDailyTradeData(latestTradeDate, diffData);
+  try {
+    stockModel.setAllStockDailyTradeData(latestTradeDate, diffData);
+  } catch (error) {
+    throw new Error(
+      "Error Excuting saveAllStcokDailyTradeData::" + error.message
+    );
+  }
 };
 
 //同步每日全体个股基本数据到基本信息表
@@ -87,7 +100,10 @@ exports.saveStockHistoryTradeData = async (data, connection) => {
   const klines = dataJson.data.klines;
   let stockCode = dataJson.data.code;
   const stockName = dataJson.data.name;
-  stockCode = stockName == "创业板指" || stockName == "深证成指" ? "0." + stockCode : stockCode;
+  stockCode =
+    stockName == "创业板指" || stockName == "深证成指"
+      ? "0." + stockCode
+      : stockCode;
   stockCode = stockName == "上证指数" ? "1." + stockCode : stockCode;
   try {
     await stockModel.setStockHistoryTradeData(

@@ -86,3 +86,5 @@ exports.syncStockBasicInfoFromDailyTradeData = async (req, res) => {
     res.status(500).json({ message: "get stock history trade data failed::"+error.message });
   }
 };
+
+
