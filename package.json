@@ -4,7 +4,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "prod": "export NODE_ENV=prod && node ./src/index.js",
+    "prod": "pm2 start ecosystem.config.js --env prod",
     "dev": "set NODE_ENV=dev && nodemon .\\src\\index.js",
     "build": "npx babel src -d dist"
   },
