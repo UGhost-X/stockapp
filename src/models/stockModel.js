@@ -1,5 +1,5 @@
 const mysql = require("mysql");
-const dbConfig = require("../../config/dbConfig");
+const dbConfig = require("../../config/dbconfig");
 const util = require("util");
 
 exports.getMySqlConnection = async () => {

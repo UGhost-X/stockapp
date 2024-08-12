@@ -98,12 +98,14 @@ exports.getExceptStockStateFromDF = async (req, res) => {
   const {stockCode} = req.query;
   try {
     const stock_trade_status = await stockService.getExceptStockState(stockCode);
+    global.logger.info("get stock trade status success::" + stock_trade_status)
     res
       .status(200)
       .json({
         message: "get stock trade status success::" + stock_trade_status,
       });
   } catch (error) {
+    global.logger.error("get stock trade status success::" + stock_trade_status)
     res.status(500).json({
       message: "get stock trade status failed::" + error.message,
     });

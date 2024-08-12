@@ -23,6 +23,7 @@ router.post(
   stockController.getStockHistoryTradeDataFromDFByMultilLine
 );
 
+//用来获取股票的交易状态
 router.post(
   "/getExceptStockStateFromDF",
   stockController.getExceptStockStateFromDF

@@ -18,6 +18,6 @@ exports.syncDailyStockTradeDataTask = async () => {
     await stockService.syncStockBasicInfo();
     global.logger.info("所有个股个股基本信息已经同步完成")
   } catch (error) {
-    console.error("获取并保存所有股票交易数据失败", error);
+    global.logger.error("获取并保存所有股票交易数据失败", error);
   }
 };
