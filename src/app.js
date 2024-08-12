@@ -7,8 +7,7 @@ const { syncDailyStockTradeDataTask } = require("./schedulars/stockTask");
 // 将 logger 挂载到全局对象上
 global.logger = require("../config/logconfig");
 global.syncDailyTradeInfoEmailContent = "";
-global.syncErrorStockCount = 0;
-global.syncsuccessStockCount = 0;
+
 
 // 每天凌晨1点执行任务
 cron.schedule("0 18 * * *", async () => {
