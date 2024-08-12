@@ -1,6 +1,7 @@
 const mysql = require("mysql");
 const dbConfig = require("../../config/dbconfig");
 const util = require("util");
+const logger = require("../../config/logconfig");
 
 exports.getMySqlConnection = async () => {
   return mysql.createConnection(dbConfig);
@@ -175,7 +176,7 @@ exports.setAllStockDailyTradeData = async (stockDate, data) => {
     await query(insertQuery, [batchValues]);
     await commit();
   } catch (error) {
-    global.logger.error(
+    logger.error(
       "Error executing setAllStockBasicInfo::" +
         error.message +
         ":::" +

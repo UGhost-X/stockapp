@@ -1,5 +1,7 @@
 const stockService = require("../services/scrapDataService");
 const sendMailService = require("../services/mailSMTPService");
+const logger = require("../../config/logconfig");
+
 
 function formatTimestamp(date) {
   const year = date.getFullYear();
@@ -17,13 +19,13 @@ exports.syncDailyStockTradeDataTask = async () => {
     const latestTradeDate = await stockService.getLastestTradeDate();
     const data = await stockService.getAllStcokDailyTradeData();
     await stockService.saveAllStcokDailyTradeData(latestTradeDate, data);
-    global.logger.info("所有个股当日交易数据已下载");
+    logger.info("所有个股当日交易数据已下载");
     await sleep(1000 * 30);
     await stockService.syncDailyTradeData2HistoryTradeData(latestTradeDate);
-    global.logger.info("所有个股当日交易数据已同步至历史交易数据");
+    logger.info("所有个股当日交易数据已同步至历史交易数据");
     await sleep(1000 * 30);
     await stockService.syncStockBasicInfo();
-    global.logger.info("所有个股基本信息已经同步完成");
+    logger.info("所有个股基本信息已经同步完成");
 
     // 获取当前日期
     const currentDate = new Date();
@@ -39,6 +41,6 @@ exports.syncDailyStockTradeDataTask = async () => {
       formattedTimestamp + " 股票数据同步情况",
       "数据同步数据失败::" + error.message
     );
-    global.logger.error("获取并保存所有股票交易数据失败", error);
+    logger.error("获取并保存所有股票交易数据失败", error);
   }
 };

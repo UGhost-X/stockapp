@@ -1,7 +1,8 @@
 const stockService = require("../services/scrapDataService.js");
 const stockModel = require("../models/stockModel.js");
-const axios = require("axios");
 const pLimit = require("p-limit");
+const logger = require("../../config/logconfig");
+
 
 //获取所有股票当日交易数据
 exports.getAllStockDailyTradeDataFromDF = async (req, res) => {
@@ -72,8 +73,8 @@ exports.getStockHistoryTradeDataFromDFByMultilLine = async (req, res) => {
             } else {
               global.syncDailyTradeInfoEmailContent += `\nError fetching data for ${code}`;
             }
-            
-            global.logger.error(
+
+            logger.error(
               `Error fetching data for ${code}:`,
               error.message
             );
@@ -85,7 +86,7 @@ exports.getStockHistoryTradeDataFromDFByMultilLine = async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: "get stock history trade data failed" });
   } finally {
-    global.logger.info("########----  数据已经下载完成  ----#####");
+    logger.info("########----  数据已经下载完成  ----#####");
     connection.commit();
     connection.end(); // 确保在所有操作完成后关闭连接
   }
@@ -110,12 +111,12 @@ exports.getExceptStockStateFromDF = async (req, res) => {
     const stock_trade_status = await stockService.getExceptStockState(
       stockCode
     );
-    global.logger.info("get stock trade status success::" + stock_trade_status);
+    logger.info("get stock trade status success::" + stock_trade_status);
     res.status(200).json({
       message: "get stock trade status success::" + stock_trade_status,
     });
   } catch (error) {
-    global.logger.error(
+    logger.error(
       "get stock trade status success::" + stock_trade_status
     );
     res.status(500).json({

@@ -1,4 +1,5 @@
 const nodemailer = require("nodemailer");
+const logger = require("../../config/logconfig");
 
 // 创建一个 SMTP 传输对象
 const transporter = nodemailer.createTransport({
@@ -24,9 +25,9 @@ const mailOptions = {
   // 发送邮件
   transporter.sendMail(mailOptions, (error, info) => {
     if (error) {
-      global.logger.error("sendMail error occurred: " + error.message);
+      logger.error("sendMail error occurred: " + error.message);
       throw new Error("sendMail error occurred: " + error.message);
     }
-    global.logger.info("sendMail success: " + info.response);
+    logger.info("sendMail success: " + info.response);
   });
 }
