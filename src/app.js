@@ -11,7 +11,7 @@ global.syncErrorStockCount = 0;
 global.syncsuccessStockCount = 0;
 
 // 每天凌晨1点执行任务
-cron.schedule("*/2 * * * *", async () => {
+cron.schedule("0 18 * * *", async () => {
   global.logger.info("启动获取所有股票交易数据任务");
   await syncDailyStockTradeDataTask();
 });
