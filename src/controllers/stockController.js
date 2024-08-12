@@ -63,6 +63,16 @@ exports.getStockHistoryTradeDataFromDFByMultilLine = async (req, res) => {
             ); // 传递连接
             await stockService.saveStockHistoryTradeData(data, connection); // 传递连接
           } catch (error) {
+            // 在每次追加前添加一个换行符
+            global.syncDailyTradeInfoEmailContent += `\nError fetching data for ${code}`;
+
+            // 如果您希望在第一次追加时不出现换行符，您可以检查当前的内容是否为空
+            if (global.syncDailyTradeInfoEmailContent === "") {
+              global.syncDailyTradeInfoEmailContent += `Error fetching data for ${code}`;
+            } else {
+              global.syncDailyTradeInfoEmailContent += `\nError fetching data for ${code}`;
+            }
+            
             global.logger.error(
               `Error fetching data for ${code}:`,
               error.message
@@ -95,17 +105,19 @@ exports.syncStockBasicInfoFromDailyTradeData = async (req, res) => {
 
 //获取个股交易状态
 exports.getExceptStockStateFromDF = async (req, res) => {
-  const {stockCode} = req.query;
+  const { stockCode } = req.query;
   try {
-    const stock_trade_status = await stockService.getExceptStockState(stockCode);
-    global.logger.info("get stock trade status success::" + stock_trade_status)
-    res
-      .status(200)
-      .json({
-        message: "get stock trade status success::" + stock_trade_status,
-      });
+    const stock_trade_status = await stockService.getExceptStockState(
+      stockCode
+    );
+    global.logger.info("get stock trade status success::" + stock_trade_status);
+    res.status(200).json({
+      message: "get stock trade status success::" + stock_trade_status,
+    });
   } catch (error) {
-    global.logger.error("get stock trade status success::" + stock_trade_status)
+    global.logger.error(
+      "get stock trade status success::" + stock_trade_status
+    );
     res.status(500).json({
       message: "get stock trade status failed::" + error.message,
     });
