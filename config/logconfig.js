@@ -26,15 +26,5 @@ if (process.env.NODE_ENV !== 'prod') {
   }));
 }
 
-// 使用 logger 实例记录日志
-// logger.info('This is an info message');
-// logger.error('This is an error message');
-
-// 示例：处理错误
-// try {
-//   throw new Error('Something went wrong');
-// } catch (error) {
-//   logger.error(error.message);
-// }
 
 module.exports = logger;
