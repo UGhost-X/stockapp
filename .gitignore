@@ -6,3 +6,6 @@ node_modules/
 
 # 忽略编译输出目录
 dist/
+
+#sql
+*.sql

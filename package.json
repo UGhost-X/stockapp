@@ -4,8 +4,8 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "prod": "pm2 start ./src/ecosystemConfig.js --env prod",
-    "dev": "set NODE_ENV=dev && nodemon .\\src\\index.js",
+    "prod": "pm2 -f start ./src/ecosystem.config.js --name 'stockappbackend' --env 'prod' ",
+    "dev": "export NODE_ENV=dev && nodemon ./src/index.js",
     "build": "npx babel src -d dist"
   },
   "keywords": [],
@@ -21,6 +21,7 @@
     "nodemailer": "^6.9.14",
     "nodemon": "^3.1.4",
     "p-limit": "^3.1.0",
+    "pm2": "^5.4.2",
     "request": "^2.88.2",
     "stockbackend": "file:",
     "util": "^0.12.5",
