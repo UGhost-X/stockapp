@@ -12,14 +12,15 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-exports.sendMailService = (subject,content)=>{
+exports.sendMailService = async (subject,content,htmlContent)=>{
+  const html = htmlContent || ''
 // 定义邮件内容
 const mailOptions = {
     from: '"daily-stock-reporter" <396979850@qq.com>', // 发件人
     to: "1129202430@qq.com", // 收件人
     subject: subject, // 邮件主题
     text: content, // 文本内容
-    // html: "<b>This is a test email sent from Node.js!</b>", // HTML 内容（可选）
+    html: html, // HTML 内容（可选）1
   };
   
   // 发送邮件

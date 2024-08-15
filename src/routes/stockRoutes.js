@@ -29,4 +29,9 @@ router.post(
   stockController.getExceptStockStateFromDF
 );
 
+router.get(
+  "/sendEmailTest",
+  stockController.sendEmailTest
+)
+
 module.exports = router;

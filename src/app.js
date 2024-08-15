@@ -1,19 +1,30 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const stockRoutes = require("./routes/stockRoutes");
-const cron = require("node-cron");
-const { syncDailyStockTradeDataTask } = require("./schedulars/stockTask");
 const logger = require("../config/logconfig");
+const cron = require("node-cron");
+const stockTask = require('./schedulars/stockTask')
 
-// 将 logger 挂载到全局对象上
+
 global.syncDailyTradeInfoEmailContent = "";
 
 
-// 每天凌晨1点执行任务
-cron.schedule("0 18 * * *", async () => {
-  logger.info("启动获取所有股票交易数据任务");
-  await syncDailyStockTradeDataTask();
-});
+let isScheduled = false; // 标记定时任务是否已经被注册
+let count = 0;
+function syncDailyStockTradeDataSchedular() {
+  if (!isScheduled) {
+    cron.schedule("30 0 * * *", async () => {
+      logger.info("启动获取所有股票交易数据任务");
+      await stockTask.syncDailyStockTradeDataTask();
+    });
+    isScheduled = true; // 标记定时任务已经注册
+  }
+}
+
+// 调用此函数来注册定时任务
+syncDailyStockTradeDataSchedular();
+
+
 
 const app = express();
 

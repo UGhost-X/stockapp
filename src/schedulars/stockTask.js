@@ -32,12 +32,12 @@ exports.syncDailyStockTradeDataTask = async () => {
     // 格式化当前日期
     const formattedTimestamp = formatTimestamp(currentDate);
 
-    sendMailService.sendMailService(
+    await sendMailService.sendMailService(
       formattedTimestamp + " 股票数据同步情况",
       "所有数据已经同步完成"
     );
   } catch (error) {
-    sendMailService.sendMailService(
+    await sendMailService.sendMailService(
       formattedTimestamp + " 股票数据同步情况",
       "数据同步数据失败::" + error.message
     );

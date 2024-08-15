@@ -2,6 +2,7 @@ const stockService = require("../services/scrapDataService.js");
 const stockModel = require("../models/stockModel.js");
 const pLimit = require("p-limit");
 const logger = require("../../config/logconfig");
+const sendMailService = require("../services/mailSMTPService");
 
 
 //获取所有股票当日交易数据
@@ -122,5 +123,91 @@ exports.getExceptStockStateFromDF = async (req, res) => {
     res.status(500).json({
       message: "get stock trade status failed::" + error.message,
     });
+  }
+};
+
+//邮件发送
+exports.sendEmailTest = async (req, res) => {
+  // 示例：获取数据库中的数据（模拟）
+  const getDataFromDatabase = async () => {
+    // 模拟数据库数据
+    return {
+      headers: ['姓名', '年龄', '城市'],
+      rows: [
+        ['张三', '30', '北京'],
+        ['李四', '25', '上海'],
+        ['王五', '27', '天津']
+      ]
+    };
+  };
+
+  const generateTableHtml = (headers, rows) => {
+    // 设置表头和单元格的通用样式
+    const tableStyles = `
+      font-family: 'Microsoft YaHei', sans-serif; /* 使用微软雅黑字体 */
+      border-collapse: collapse;
+      width: 100%;
+      color: #151d29
+    `;
+    const headerStyles = `
+      background-color: #e5a84b;
+      border: 1px solid #ddd;
+      padding: 12px;
+      text-align: center;
+      font-weight: bold; /* 表头字体加粗 */
+      font-size: 16px;
+    `;
+    const cellStyles = `
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: center;
+      font-size: 12px;
+    `;
+    const conditionalStyle = `
+      color: #c12c1f
+    `;
+
+    const tableHeader = headers.map(header =>
+      `<th style="${headerStyles}">${header}</th>`
+    ).join('');
+
+    // 排序行数据
+    const sortedRows = rows.sort((a, b) => parseInt(a[1]) - parseInt(b[1]));
+
+    const tableRows = sortedRows.map(row => {
+      const cells = row.map((cell, index) => {
+        // 条件判断：如果年龄低于27，则设置颜色为红色
+        const isAgeBelow27 = index === 1 && parseInt(cell) < 27;
+        return `<td style="${cellStyles} ${isAgeBelow27 ? conditionalStyle : ''}">${cell}</td>`;
+      }).join('');
+
+      return `<tr>${cells}</tr>`;
+    }).join('');
+
+    return `
+      <h3 style="font-family: 'Microsoft YaHei', sans-serif;">这是一个动态生成的表格：</h3>
+      <table style="${tableStyles}">
+          <thead>
+              <tr>
+                  ${tableHeader}
+              </tr>
+          </thead>
+          <tbody>
+              ${tableRows}
+          </tbody>
+      </table>
+    `;
+  };
+
+  try {
+    const data = await getDataFromDatabase();
+    const tableHtml = generateTableHtml(data.headers, data.rows);
+    logger.info("邮件正在发送...");
+    await sendMailService.sendMailService('test', "hello world", tableHtml);
+    logger.info("邮件发送完成");
+    res.status(200).json({ message: "send email success" });
+  } catch (error) {
+    res.status(500).json({ message: "send email failed::" + error.message });
+    throw new Error("Error invokes in sendEmailTest::" + error.message)
   }
 };
