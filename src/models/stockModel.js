@@ -21,7 +21,7 @@ exports.setAllStockBasicInfo = async () => {
     truncate table stock_basic_info;
   `;
   const insertQuery = `
-    insert into stock_basic_info select stock_code,stock_ch_name,null,created_date,update_date from daily_trades;
+    insert into stock_basic_info select stock_code,stock_ch_name,null,stock_date,null,null,null,created_date,update_date from daily_trades;
   `;
   //需要手动补充上上证、深证、创业版的基本信息
   const insertQueryByExtraInfo = `
@@ -44,12 +44,39 @@ exports.setAllStockBasicInfo = async () => {
   SET a.stock_listing_date = b.stock_listing_date;
   `;
 
+  //同步最新交易日期
+  const updateLatestTradeDateQuery = `
+  UPDATE stockdata.stock_basic_info a join 
+    (select stock_code, MAX(trade_date) as stock_lastest_trade_date  from stockdata.stock_history_trade sht   group by stock_code ) b
+    on a.stock_code =b.stock_code
+    set a.stock_lastest_trade_date =b.stock_lastest_trade_date;
+  `
+  //交易间隔，交易状态
+  const updataTradeDateInterval = `
+    UPDATE stockdata.stock_basic_info set stock_trade_interval = DATEDIFF(stock_current_trade_date ,stock_lastest_trade_date) ;
+  `
+  const updataTradeStatus0 = `
+    UPDATE stockdata.stock_basic_info set stock_trade_status = 'Normal' where stock_trade_interval <= 7 and stock_trade_interval is  not NULL ;
+  `
+  const updataTradeStatus1 = `
+    UPDATE stockdata.stock_basic_info set stock_trade_status = 'Exception' where stock_trade_interval > 7;
+  `
+  const updataTradeStatus2 = `
+    UPDATE stockdata.stock_basic_info set stock_trade_status = 'Others' where stock_trade_interval is null;
+  `
+
+
   try {
     await beginTransaction();
     await query(truncateQuery);
     await query(insertQuery);
     await query(insertQueryByExtraInfo, [insertQueryByExtraInfoData]);
     await query(updateListingDataQuery);
+    await query(updateLatestTradeDateQuery);
+    await query(updataTradeDateInterval);
+    await query(updataTradeStatus0);
+    await query(updataTradeStatus1);
+    await query(updataTradeStatus2);
     await commit();
   } catch (error) {
     throw new Error("Error executing setAllStockBasicInfo::" + error.message);
@@ -106,7 +133,8 @@ exports.insertDailyTradeData2HistoryTradeData = async (tradeDate) => {
     INSERT ignore into stock_history_trade(stock_code,stock_ch_name,trade_date,\`open\`
     ,\`close\`,high,low,volume,amount,pct_chg_ratio,pct_ratio,pct_chg,chg_ratio) 
     select stock_code,stock_ch_name,\'${tradeDate}\',\`open\`
-    ,\`close\`,high,low,volume,amount,pct_chg_ratio,pct_ratio,pct_chg,chg_ratio from daily_trades;
+    ,\`close\`,high,low,volume,amount,pct_chg_ratio,pct_ratio,pct_chg,chg_ratio from daily_trades
+     where \`open\`>0;
     `;
   try {
     if (!tradeDate) {
@@ -178,9 +206,9 @@ exports.setAllStockDailyTradeData = async (stockDate, data) => {
   } catch (error) {
     logger.error(
       "Error executing setAllStockBasicInfo::" +
-        error.message +
-        ":::" +
-        batchValues
+      error.message +
+      ":::" +
+      batchValues
     );
     throw new Error("Error executing setAllStockBasicInfo::" + error.message);
   } finally {
@@ -236,3 +264,23 @@ exports.setStockHistoryTradeData = async (
     );
   }
 };
+
+// 获取当日同步到历史数据库的数据数量
+exports.getDailyTradeStockAmount = async (tradeData) => {
+  const connection = mysql.createConnection(dbConfig);
+  const query = util.promisify(connection.query).bind(connection);
+  const end = util.promisify(connection.end).bind(connection);
+  let getQuery = `
+    select COUNT(1) from stockdata.stock_history_trade sht where trade_date=${tradeData};
+  `
+  try {
+    const result = await query(getQuery);
+    return result;
+  } catch (error) {
+    throw new Error(
+      "Error executing getDailyTradeStockAmount::" + error.message
+    );
+  } finally {
+    await end();
+  }
+}

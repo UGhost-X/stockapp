@@ -72,8 +72,8 @@ exports.getStockHistoryTradeData = async (secid, startDate, endDate, lmt) => {
   secid = secid.includes(".")
     ? secid
     : secid.startsWith("0") || secid.startsWith("3")
-    ? "0." + secid
-    : "1." + secid;
+      ? "0." + secid
+      : "1." + secid;
   startDate = startDate || 0;
   endDate = endDate || 20250101;
   lmt = lmt || 12000;
@@ -140,6 +140,18 @@ exports.getExceptStockState = async (code) => {
     return dataJson.bar_info.Status;
 
   } catch (error) {
-    throw new Error("Error Excuting getExceptStockState::"+error.message)
+    throw new Error("Error Excuting getExceptStockState::" + error.message)
   }
 };
+
+//获取当日同步数据数量
+exports.getDailyTradeStockAmountService = (tradeData) => {
+  try {
+    return stockModel.getDailyTradeStockAmount(tradeData);
+  } catch (error) {
+    throw new Error(
+      "Error Excuting getDailyTradeStockAmountService::" + error.message
+    );
+  }
+
+}
