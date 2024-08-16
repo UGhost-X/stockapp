@@ -3,13 +3,13 @@ const stockModel = require("../models/stockModel.js");
 const logger = require("../../config/logconfig.js");
 
 //获取最新的交易日期
-let getLastestTradeDateOptions = {
+let getLatestTradeDateOptions = {
   method: "GET",
   url: "https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=0.399001&fields1=f1&fields2=f51&klt=101&fqt=1&end=20500101&lmt=1",
 };
-exports.getLastestTradeDate = () => {
+exports.getLatestTradeDate = () => {
   return new Promise((resolve, reject) => {
-    request(getLastestTradeDateOptions, (error, response) => {
+    request(getLatestTradeDateOptions, (error, response) => {
       if (error) {
         reject(error);
       } else {
