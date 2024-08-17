@@ -127,26 +127,10 @@ exports.getExceptStockStateFromDF = async (req, res) => {
   }
 };
 
-exports.getStockHistoryTradeDataFromDB = async (req,res) => {
-  const { stockCode,startDate,endDate } = req.query;
 
-  try {
-    logger.info("数据开始分析.......")
-    await stockAnalysis.getHistoryTradeDataService(stockCode,startDate,endDate);
-    res.status(200).json({
-      message: "getStockHistoryTradeDataFromDB success"
-    });
-  } catch (error) {
-    logger.error(
-      "getStockHistoryTradeDataFromDB failed::" + error.message,
-    );
-    res.status(500).json({
-      message: "getStockHistoryTradeDataFromDB failed::" + error.message,
-    });
-  }
-  
 
-}
+
+
 
 
 
@@ -260,5 +244,25 @@ exports.syncStockTaskTest = async (req, res) => {
 
 }
 
+//量能法分析
+exports.getStockHistoryTradeDataFromDB = async (req,res) => {
+  const { startDate,endDate } = req.query;
 
-
+  try {
+    logger.info("数据开始分析.......");
+    const dataGrouped =  await stockAnalysis.getHistoryTradeDataService(startDate,endDate);
+    logger.info("获取数据已完成...");
+    await stockAnalysis.volumeEnergyService(dataGrouped,15);
+    logger.info("数据分析已完成...");
+    res.status(200).json({
+      message: "getStockHistoryTradeDataFromDB success"
+    });
+  } catch (error) {
+    logger.error(
+      "getStockHistoryTradeDataFromDB failed::" + error.message,
+    );
+    res.status(500).json({
+      message: "getStockHistoryTradeDataFromDB failed::" + error.message,
+    });
+  }
+}

@@ -287,18 +287,18 @@ exports.getDailyTradeStockAmount = async (tradeData) => {
 
 const _ = require("lodash");
 // 按照日期/代码获取股票历史数据
-exports.getHistoryTradeData = async (code, startDate, endDate) => {
-  const dataGrouped = await getDataGrouped(code, startDate, endDate);
+exports.getHistoryTradeData = async (startDate, endDate) => {
+  const dataGrouped = await getDataGrouped(startDate, endDate);
   return dataGrouped;
 }
 
-async function getDataGrouped(code, startDate, endDate) {
+async function getDataGrouped(startDate, endDate) {
   const connection = mysql.createConnection(dbConfig);
   const query = util.promisify(connection.query).bind(connection);
   const end = util.promisify(connection.end).bind(connection);
 
   const dataQuery = `
-    SELECT stock_code, trade_date, close, high, open, pct_chg 
+    SELECT stock_code, stock_ch_name,trade_date, close, high, open, pct_chg 
     FROM stockdata.stock_history_trade
     WHERE  (trade_date BETWEEN ? AND ? )
   `;
@@ -309,7 +309,28 @@ async function getDataGrouped(code, startDate, endDate) {
     const dataGrouped = _.groupBy(rows, 'stock_code');
     return dataGrouped;
   } catch (error) {
-    console.error('Error fetching or grouping data:', error.message);
+    logger.error('Error fetching or grouping data:', error.message);
+    throw error;
+  } finally {
+    await end();
+  }
+}
+
+//股票分析数据写入数据库
+exports.setAnalyseData = async (data) => {
+  const connection = mysql.createConnection(dbConfig);
+  const query = util.promisify(connection.query).bind(connection);
+  const end = util.promisify(connection.end).bind(connection);
+
+  const insertQuery = `
+   INSERT INTO WaveBand (stock_code, analyse_date, one_month_change, analyse_day_price, purchase_price,anylse_method)
+        VALUES ?
+  `;
+  try {
+    // 执行插入
+    await query(insertQuery, [data]);
+  } catch (error) {
+    logger.error('setAnalyseData failed:', error.message);
     throw error;
   } finally {
     await end();
