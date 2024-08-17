@@ -31,12 +31,11 @@ exports.syncDailyStockTradeDataTask = async () => {
     const currentDate = new Date();
     // 格式化当前日期
     const formattedTimestamp = formatTimestamp(currentDate);
-
-    const sysncStockAmount = stockService.getDailyTradeStockAmountService(latestTradeDate)
+    const syncAmount = stockService.getDailyTradeStockAmountService();
 
     await sendMailService.sendMailService(
       formattedTimestamp + " 股票数据同步情况",
-      "所有数据已经同步完成,同步数据量:"+sysncStockAmount
+      "所有数据已经同步完成,同步数据量::"+syncAmount[0].amount
     );
   } catch (error) {
     await sendMailService.sendMailService(

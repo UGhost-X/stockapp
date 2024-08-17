@@ -29,9 +29,23 @@ router.post(
   stockController.getExceptStockStateFromDF
 );
 
+
+
+//--------------测试---------------//
 router.get(
   "/sendEmailTest",
   stockController.sendEmailTest
 )
 
+router.get(
+  "/syncStockTaskTest",
+  stockController.syncStockTaskTest
+)
+
+router.post(
+  "/getStockHistoryTradeDataFromDB",
+  stockController.getStockHistoryTradeDataFromDB
+)
+
 module.exports = router;
+

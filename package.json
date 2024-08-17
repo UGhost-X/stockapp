@@ -5,7 +5,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "prod": "pm2 -f start ./src/ecosystem.config.js --name 'stockappbackend' --env 'prod' ",
-    "dev": "export NODE_ENV=dev && nodemon ./src/index.js",
+    "dev": "pm2 -f start ./src/ecosystem.config.js --name 'stockappbackend-dev'",
     "build": "npx babel src -d dist"
   },
   "keywords": [],
@@ -16,6 +16,7 @@
     "axios": "^1.7.3",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
+    "lodash": "^4.17.21",
     "mysql": "^2.18.1",
     "node-cron": "^3.0.3",
     "nodemailer": "^6.9.14",

@@ -271,7 +271,7 @@ exports.getDailyTradeStockAmount = async (tradeData) => {
   const query = util.promisify(connection.query).bind(connection);
   const end = util.promisify(connection.end).bind(connection);
   let getQuery = `
-    select COUNT(1) from stockdata.stock_history_trade sht where trade_date=${tradeData};
+    select COUNT(1) as amount from stockdata.stock_history_trade sht where trade_date=${tradeData};
   `
   try {
     const result = await query(getQuery);
@@ -280,6 +280,37 @@ exports.getDailyTradeStockAmount = async (tradeData) => {
     throw new Error(
       "Error executing getDailyTradeStockAmount::" + error.message
     );
+  } finally {
+    await end();
+  }
+}
+
+const _ = require("lodash");
+// 按照日期/代码获取股票历史数据
+exports.getHistoryTradeData = async (code, startDate, endDate) => {
+  const dataGrouped = await getDataGrouped(code, startDate, endDate);
+  return dataGrouped;
+}
+
+async function getDataGrouped(code, startDate, endDate) {
+  const connection = mysql.createConnection(dbConfig);
+  const query = util.promisify(connection.query).bind(connection);
+  const end = util.promisify(connection.end).bind(connection);
+
+  const dataQuery = `
+    SELECT stock_code, trade_date, close, high, open, pct_chg 
+    FROM stockdata.stock_history_trade
+    WHERE  (trade_date BETWEEN ? AND ? )
+  `;
+  try {
+    // 执行查询
+    const [...rows] = await query(dataQuery, [startDate, endDate]);
+    // 分组数据
+    const dataGrouped = _.groupBy(rows, 'stock_code');
+    return dataGrouped;
+  } catch (error) {
+    console.error('Error fetching or grouping data:', error.message);
+    throw error;
   } finally {
     await end();
   }

@@ -1,4 +1,5 @@
 const stockService = require("../services/scrapDataService.js");
+const stockAnalysis = require("../services/stockAnalysis.js");
 const stockModel = require("../models/stockModel.js");
 const pLimit = require("p-limit");
 const logger = require("../../config/logconfig");
@@ -126,7 +127,33 @@ exports.getExceptStockStateFromDF = async (req, res) => {
   }
 };
 
-//邮件发送
+exports.getStockHistoryTradeDataFromDB = async (req,res) => {
+  const { stockCode,startDate,endDate } = req.query;
+
+  try {
+    logger.info("数据开始分析.......")
+    await stockAnalysis.getHistoryTradeDataService(stockCode,startDate,endDate);
+    res.status(200).json({
+      message: "getStockHistoryTradeDataFromDB success"
+    });
+  } catch (error) {
+    logger.error(
+      "getStockHistoryTradeDataFromDB failed::" + error.message,
+    );
+    res.status(500).json({
+      message: "getStockHistoryTradeDataFromDB failed::" + error.message,
+    });
+  }
+  
+
+}
+
+
+
+
+// ----------------------测试-------------------------------------//
+
+//邮件发送测试
 exports.sendEmailTest = async (req, res) => {
   // 示例：获取数据库中的数据（模拟）
   const getDataFromDatabase = async () => {
@@ -211,3 +238,27 @@ exports.sendEmailTest = async (req, res) => {
     throw new Error("Error invokes in sendEmailTest::" + error.message)
   }
 };
+
+const schedularTask = require('../schedulars/stockTask.js')
+//定时任务功能测试
+exports.syncStockTaskTest = async (req, res) => {
+
+  try {
+    const stock_trade_status = await schedularTask.syncDailyStockTradeDataTask()
+    logger.info("get stock trade status success::" + stock_trade_status);
+    res.status(200).json({
+      message: "get stock trade status success::" + stock_trade_status,
+    });
+  } catch (error) {
+    logger.error(
+      "get stock trade status success::" + stock_trade_status
+    );
+    res.status(500).json({
+      message: "get stock trade status failed::" + error.message,
+    });
+  }
+
+}
+
+
+

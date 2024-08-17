@@ -10,10 +10,9 @@ global.syncDailyTradeInfoEmailContent = "";
 
 
 let isScheduled = false; // 标记定时任务是否已经被注册
-let count = 0;
 function syncDailyStockTradeDataSchedular() {
   if (!isScheduled) {
-    cron.schedule("30 0 * * *", async () => {
+    cron.schedule("0 18 * * *", async () => {
       logger.info("启动获取所有股票交易数据任务");
       await stockTask.syncDailyStockTradeDataTask();
     });
