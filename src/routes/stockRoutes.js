@@ -47,5 +47,10 @@ router.post(
   stockController.getStockHistoryTradeDataFromDB
 )
 
+router.get(
+  "/getDailyTradeStockAmountTest",
+  stockController.getDailyTradeStockAmountTest
+)
+
 module.exports = router;
 

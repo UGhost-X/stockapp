@@ -9,13 +9,13 @@ const sendMailService = require("../services/mailSMTPService");
 //获取所有股票当日交易数据
 exports.getAllStockDailyTradeDataFromDF = async (req, res) => {
   try {
-    
+
     const latestTradeDate = await stockService.getLatestTradeDate();
     const data = await stockService.getAllStcokDailyTradeData();
     stockService.saveAllStcokDailyTradeData(latestTradeDate, data);
     res.status(200).json({ message: "get all stock trade data success" });
   } catch (error) {
-    res.status(500).json({ message: "get all stock trade data failed" + error.message});
+    res.status(500).json({ message: "get all stock trade data failed" + error.message });
   }
 };
 
@@ -224,6 +224,30 @@ exports.sendEmailTest = async (req, res) => {
   }
 };
 
+//量能法分析
+exports.getStockHistoryTradeDataFromDB = async (req, res) => {
+  const { startDate, endDate } = req.query;
+
+  try {
+    logger.info("数据开始分析.......");
+    const dataGrouped = await stockAnalysis.getHistoryTradeDataService(startDate, endDate);
+    logger.info("获取数据已完成...");
+    await stockAnalysis.volumeEnergyService(dataGrouped, 16);
+    logger.info("数据分析已完成...");
+    res.status(200).json({
+      message: "getStockHistoryTradeDataFromDB success"
+    });
+  } catch (error) {
+    logger.error(
+      "getStockHistoryTradeDataFromDB failed::" + error.message,
+    );
+    res.status(500).json({
+      message: "getStockHistoryTradeDataFromDB failed::" + error.message,
+    });
+  }
+}
+
+
 const schedularTask = require('../schedulars/stockTask.js')
 //定时任务功能测试
 exports.syncStockTaskTest = async (req, res) => {
@@ -245,25 +269,21 @@ exports.syncStockTaskTest = async (req, res) => {
 
 }
 
-//量能法分析
-exports.getStockHistoryTradeDataFromDB = async (req,res) => {
-  const { startDate,endDate } = req.query;
 
+const moment = require('moment');
+//获取每日同步的数据量
+exports.getDailyTradeStockAmountTest = async (req, res) => {
   try {
-    logger.info("数据开始分析.......");
-    const dataGrouped =  await stockAnalysis.getHistoryTradeDataService(startDate,endDate);
-    logger.info("获取数据已完成...");
-    await stockAnalysis.volumeEnergyService(dataGrouped,16);
-    logger.info("数据分析已完成...");
+    const latestTradeDate = await stockService.getLatestTradeDate();
+    const formattedTimestamp = moment(latestTradeDate).format("YYYY-MM-DD");
+    const stockAmount = await stockService.getDailyTradeStockAmountService(formattedTimestamp);
     res.status(200).json({
-      message: "getStockHistoryTradeDataFromDB success"
+      message: "getDailyTradeStockAmountTest success::" + stockAmount[0].amount,
     });
   } catch (error) {
-    logger.error(
-      "getStockHistoryTradeDataFromDB failed::" + error.message,
-    );
     res.status(500).json({
-      message: "getStockHistoryTradeDataFromDB failed::" + error.message,
+      message: "getDailyTradeStockAmountTest failed::" + error.message,
     });
   }
 }
+

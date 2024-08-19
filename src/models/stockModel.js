@@ -271,10 +271,10 @@ exports.getDailyTradeStockAmount = async (tradeData) => {
   const query = util.promisify(connection.query).bind(connection);
   const end = util.promisify(connection.end).bind(connection);
   let getQuery = `
-    select COUNT(1) as amount from stockdata.stock_history_trade sht where trade_date=${tradeData};
+    select COUNT(1) as amount from stockdata.stock_history_trade sht where trade_date=?;
   `
   try {
-    const result = await query(getQuery);
+    const result = await query(getQuery,[tradeData]);
     return result;
   } catch (error) {
     throw new Error(
