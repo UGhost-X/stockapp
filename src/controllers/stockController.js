@@ -9,12 +9,13 @@ const sendMailService = require("../services/mailSMTPService");
 //获取所有股票当日交易数据
 exports.getAllStockDailyTradeDataFromDF = async (req, res) => {
   try {
-    const latestTradeDate = await stockService.getLastestTradeDate();
+    
+    const latestTradeDate = await stockService.getLatestTradeDate();
     const data = await stockService.getAllStcokDailyTradeData();
     stockService.saveAllStcokDailyTradeData(latestTradeDate, data);
     res.status(200).json({ message: "get all stock trade data success" });
   } catch (error) {
-    res.status(500).json({ message: "get all stock trade data failed" });
+    res.status(500).json({ message: "get all stock trade data failed" + error.message});
   }
 };
 

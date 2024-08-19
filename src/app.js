@@ -9,7 +9,7 @@ const stockTask = require('./schedulars/stockTask')
 global.syncDailyTradeInfoEmailContent = "";
 
 
-exports.syncDailyStockTradeDataSchedular = () => {
+exports.syncDailyStockTradeDataSchedular = async () => {
   logger.info("syncDailyStockTradeDataSchedular had registed")
   cron.schedule("0 18 * * *", async () => {
     logger.info("Get All Stocks Data Task Starting....");
