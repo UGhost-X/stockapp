@@ -28,7 +28,8 @@ exports.syncDailyStockTradeDataTask = async () => {
     const currentDate = new Date();
     // 格式化当前日期
     const formattedTimestamp = moment(latestTradeDate).format("YYYY-MM-DD");
-    const syncAmount = stockService.getDailyTradeStockAmountService(formattedTimestamp);
+    logger.info(formattedTimestamp);
+    const syncAmount = await stockService.getDailyTradeStockAmountService(formattedTimestamp);
 
     await sendMailService.sendMailService(
       formattedTimestamp + " 股票数据同步情况",

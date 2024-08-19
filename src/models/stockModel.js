@@ -285,6 +285,26 @@ exports.getDailyTradeStockAmount = async (tradeData) => {
   }
 }
 
+// 获取当日同步到历史数据库的数据数量
+exports.getAnalseStockList = async (tradeData) => {
+  const connection = mysql.createConnection(dbConfig);
+  const query = util.promisify(connection.query).bind(connection);
+  const end = util.promisify(connection.end).bind(connection);
+  let getQuery = `
+    select COUNT(1) as amount from stockdata.stock_history_trade sht where trade_date=?;
+  `
+  try {
+    const result = await query(getQuery,[tradeData]);
+    return result;
+  } catch (error) {
+    throw new Error(
+      "Error executing getDailyTradeStockAmount::" + error.message
+    );
+  } finally {
+    await end();
+  }
+}
+
 const _ = require("lodash");
 const { info } = require("console");
 // 按照日期/代码获取股票历史数据
