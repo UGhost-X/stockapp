@@ -252,7 +252,7 @@ exports.getStockHistoryTradeDataFromDB = async (req,res) => {
     logger.info("数据开始分析.......");
     const dataGrouped =  await stockAnalysis.getHistoryTradeDataService(startDate,endDate);
     logger.info("获取数据已完成...");
-    await stockAnalysis.volumeEnergyService(dataGrouped,15);
+    await stockAnalysis.volumeEnergyService(dataGrouped,16);
     logger.info("数据分析已完成...");
     res.status(200).json({
       message: "getStockHistoryTradeDataFromDB success"

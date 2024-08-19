@@ -286,6 +286,7 @@ exports.getDailyTradeStockAmount = async (tradeData) => {
 }
 
 const _ = require("lodash");
+const { info } = require("console");
 // 按照日期/代码获取股票历史数据
 exports.getHistoryTradeData = async (startDate, endDate) => {
   const dataGrouped = await getDataGrouped(startDate, endDate);
@@ -298,9 +299,9 @@ async function getDataGrouped(startDate, endDate) {
   const end = util.promisify(connection.end).bind(connection);
 
   const dataQuery = `
-    SELECT stock_code, stock_ch_name,trade_date, close, high, open, pct_chg 
+    SELECT stock_code, stock_ch_name,trade_date, close, high, open, pct_ratio 
     FROM stockdata.stock_history_trade
-    WHERE  (trade_date BETWEEN ? AND ? )
+    WHERE  (trade_date BETWEEN ? AND ? ) order by trade_date desc ,stock_code
   `;
   try {
     // 执行查询
@@ -321,9 +322,8 @@ exports.setAnalyseData = async (data) => {
   const connection = mysql.createConnection(dbConfig);
   const query = util.promisify(connection.query).bind(connection);
   const end = util.promisify(connection.end).bind(connection);
-
   const insertQuery = `
-   INSERT INTO WaveBand (stock_code, analyse_date, one_month_change, analyse_day_price, purchase_price,anylse_method)
+   INSERT ignore INTO stock_analyse_collection (stock_code, analyse_date, one_month_change, one_month_change_date,analyse_day_price, purchase_price,anylse_method)
         VALUES ?
   `;
   try {
