@@ -128,7 +128,7 @@ exports.volumeEnergyService = async (dataGrouped, delay) => {
                 oneMonthChange = isNaN(oneMonthChange)||oneMonthChange==='undefined'||oneMonthChange==='' ? 0 : Math.round(oneMonthChange*100-100,3);  
                 const deadline = moment(tradeDate[delay - 24 < 0?0:delay - 24]).format('YYYY-MM-DD'); // 假设 date 是列名
                 const analyseDatePrice = closePrice[0];
-                const purchasePrice = highPrice[0];
+                const purchasePrice = Math.round((closePrice[0]+openPrice[0])/2,2);
                 seedStock.push([name, analyseDate, oneMonthChange, deadline,analyseDatePrice, purchasePrice, 'volumnEnerge']);
             } catch (error) {
                 logger.info(error.message);

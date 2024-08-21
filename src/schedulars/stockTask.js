@@ -16,7 +16,7 @@ exports.syncDailyStockTradeDataTask = async () => {
     const latestTradeDate = await stockService.getLatestTradeDate();
     const dateNow = moment(Date.now()).format("YYYY-MM-DD");
     const latestDate = moment(latestTradeDate).format("YYYY-MM-DD");
-    if (dateNow.isAfter(latestDate)) {
+    if (moment(Date.now()).isAfter(latestDate, 'd')) {
       logger.info("当前非交易日或非交易时间");
       return null;
     }

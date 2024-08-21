@@ -9,7 +9,6 @@ const sendMailService = require("../services/mailSMTPService");
 //获取所有股票当日交易数据
 exports.getAllStockDailyTradeDataFromDF = async (req, res) => {
   try {
-
     const latestTradeDate = await stockService.getLatestTradeDate();
     const data = await stockService.getAllStcokDailyTradeData();
     stockService.saveAllStcokDailyTradeData(latestTradeDate, data);
@@ -246,13 +245,12 @@ exports.syncStockTaskTest = async (req, res) => {
   try {
     const stock_trade_status = await schedularTask.syncDailyStockTradeDataTask()
     logger.info("get stock trade status success::" + stock_trade_status);
+
+
     res.status(200).json({
-      message: "get stock trade status success::" + stock_trade_status,
+      message: "get stock trade status success::",
     });
   } catch (error) {
-    logger.error(
-      "get stock trade status success::" + stock_trade_status
-    );
     res.status(500).json({
       message: "get stock trade status failed::" + error.message,
     });
