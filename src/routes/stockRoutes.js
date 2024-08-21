@@ -32,7 +32,7 @@ router.post(
 
 
 //--------------测试---------------//
-router.get(
+router.post(
   "/sendEmailTest",
   stockController.sendEmailTest
 )

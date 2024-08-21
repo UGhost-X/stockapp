@@ -24,7 +24,8 @@ exports.getHistoryTradeDataService = async (startDate, endDate) => {
 exports.volumeEnergyService = async (dataGrouped, delay) => {
     const startTimeAnalyse = Date.now();
     const seedStock = [];
-    while (delay > 5) {
+    while (delay > -1) {
+        let analyseDate = '';
         for (const [name, group] of Object.entries(dataGrouped)) {
             if (!group[delay + 200]) {
                 continue;
@@ -34,12 +35,10 @@ exports.volumeEnergyService = async (dataGrouped, delay) => {
             const highPrice = evaluateInterval.map(item => item.high);
             const openPrice = evaluateInterval.map(item => item.open);
             const raiseFallRange = evaluateInterval.map(item => item.pct_ratio);
-            const tradeDate = evaluateInterval.map(item => item.trade_date);
             try {
                 if (!group[delay] || !('trade_date' in group[delay]) || group[delay].trade_date === '') {
                     continue;
                 }
-                analyseDate = moment(group[delay].trade_date).format('YYYY-MM-DD');
                 const currentIndex = 5;
 
                 if (raiseFallRange[currentIndex] / _.meanBy(_.map(raiseFallRange.slice(currentIndex + 1, currentIndex + 15), Math.abs)) < 2.5) {
@@ -86,8 +85,6 @@ exports.volumeEnergyService = async (dataGrouped, delay) => {
                     continue;
                 }
 
-
-
                 // 当前MA21比前80日内的最小值不能大于15%
                 const ma21 = [];
                 for (let i = 0; i < 80; i++) {
@@ -106,9 +103,6 @@ exports.volumeEnergyService = async (dataGrouped, delay) => {
                 if (_.sum(eachKColumnScopeToOne) > 0) {
                     continue;
                 }
-
-                // logger.info(moment(evaluateInterval[currentIndex].trade_date).format('YYYY-MM-DD')+"::"+name)
-
                 // 调整期内阴线长度不能太长
                 const eachKColumnSolidLength = [];
                 for (let i = 1; i < 6; i++) {
@@ -124,16 +118,18 @@ exports.volumeEnergyService = async (dataGrouped, delay) => {
                 }
 
                 const tradeDate = group.map(item => item.trade_date);
+                analyseDate = moment(tradeDate[delay]).format('YYYY-MM-DD');
                 const closePriceMeta = group.map(item => item.close);
                 const openPriceMeta = group.map(item => item.open);
 
-                const oneMonthChange = delay - 24 < 0
+                let oneMonthChange = delay - 24 < 0
                     ? closePriceMeta[0] / openPriceMeta[delay-1]
                     : closePriceMeta[delay-24] / openPriceMeta[delay-1];
+                oneMonthChange = isNaN(oneMonthChange)||oneMonthChange==='undefined'||oneMonthChange==='' ? 0 : Math.round(oneMonthChange*100-100,3);  
                 const deadline = moment(tradeDate[delay - 24 < 0?0:delay - 24]).format('YYYY-MM-DD'); // 假设 date 是列名
                 const analyseDatePrice = closePrice[0];
                 const purchasePrice = highPrice[0];
-                seedStock.push([name, analyseDate, Math.round(oneMonthChange*100-100,3), deadline,analyseDatePrice, purchasePrice, 'volumnEnerge']);
+                seedStock.push([name, analyseDate, oneMonthChange, deadline,analyseDatePrice, purchasePrice, 'volumnEnerge']);
             } catch (error) {
                 logger.info(error.message);
                 continue;

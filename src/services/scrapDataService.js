@@ -155,3 +155,14 @@ exports.getDailyTradeStockAmountService = (tradeData) => {
   }
 
 }
+
+//获取股票分析结果数据服务
+exports.getAnalyseStockListService = async (analyseDateStart,analyseDateEnd) =>{
+  try {
+    return await stockModel.getAnalseStockList(analyseDateStart,analyseDateEnd);
+  } catch (error) {
+    throw new Error(
+      "Error Excuting getAnalyseStockListService::" + error.message
+    );
+  }
+}

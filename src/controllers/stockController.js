@@ -140,19 +140,9 @@ exports.getExceptStockStateFromDF = async (req, res) => {
 
 //邮件发送测试
 exports.sendEmailTest = async (req, res) => {
-  // 示例：获取数据库中的数据（模拟）
-  const getDataFromDatabase = async () => {
-    // 模拟数据库数据
-    return {
-      headers: ['姓名', '年龄', '城市'],
-      rows: [
-        ['张三', '30', '北京'],
-        ['李四', '25', '上海'],
-        ['王五', '27', '天津']
-      ]
-    };
-  };
+  const { analyseDateStart, analyseDateEnd } = req.query;
 
+  //邮件表格模板
   const generateTableHtml = (headers, rows) => {
     // 设置表头和单元格的通用样式
     const tableStyles = `
@@ -184,13 +174,14 @@ exports.sendEmailTest = async (req, res) => {
     ).join('');
 
     // 排序行数据
-    const sortedRows = rows.sort((a, b) => parseInt(a[1]) - parseInt(b[1]));
+    // const sortedRows = rows.sort((a, b) => parseInt(a[1]) - parseInt(b[1]));
 
-    const tableRows = sortedRows.map(row => {
+    const tableRows = rows.map(row => {
       const cells = row.map((cell, index) => {
         // 条件判断：如果年龄低于27，则设置颜色为红色
-        const isAgeBelow27 = index === 1 && parseInt(cell) < 27;
-        return `<td style="${cellStyles} ${isAgeBelow27 ? conditionalStyle : ''}">${cell}</td>`;
+        // const isAgeBelow27 = index === 1 && parseInt(cell) < 27;
+        // return `<td style="${cellStyles} ${isAgeBelow27 ? conditionalStyle : ''}">${cell}</td>`;
+        return `<td style="${cellStyles}">${cell}</td>`;
       }).join('');
 
       return `<tr>${cells}</tr>`;
@@ -212,7 +203,8 @@ exports.sendEmailTest = async (req, res) => {
   };
 
   try {
-    const data = await getDataFromDatabase();
+    const data = await stockService.getAnalyseStockListService(analyseDateStart, analyseDateEnd);
+    logger.info("data:::" + data);
     const tableHtml = generateTableHtml(data.headers, data.rows);
     logger.info("邮件正在发送...");
     await sendMailService.sendMailService('test', "hello world", tableHtml);
@@ -227,12 +219,11 @@ exports.sendEmailTest = async (req, res) => {
 //量能法分析
 exports.getStockHistoryTradeDataFromDB = async (req, res) => {
   const { startDate, endDate } = req.query;
-
   try {
     logger.info("数据开始分析.......");
     const dataGrouped = await stockAnalysis.getHistoryTradeDataService(startDate, endDate);
     logger.info("获取数据已完成...");
-    await stockAnalysis.volumeEnergyService(dataGrouped, 16);
+    await stockAnalysis.volumeEnergyService(dataGrouped, 0);
     logger.info("数据分析已完成...");
     res.status(200).json({
       message: "getStockHistoryTradeDataFromDB success"

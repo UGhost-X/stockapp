@@ -274,7 +274,7 @@ exports.getDailyTradeStockAmount = async (tradeData) => {
     select COUNT(1) as amount from stockdata.stock_history_trade sht where trade_date=?;
   `
   try {
-    const result = await query(getQuery,[tradeData]);
+    const result = await query(getQuery, [tradeData]);
     return result;
   } catch (error) {
     throw new Error(
@@ -285,35 +285,57 @@ exports.getDailyTradeStockAmount = async (tradeData) => {
   }
 }
 
-// 获取当日同步到历史数据库的数据数量
-exports.getAnalseStockList = async (tradeData) => {
+// 获取股票分析数据
+exports.getAnalseStockList = async (analyseDateStart, analyseDateEnd) => {
+  analyseDateEnd = analyseDateEnd || analyseDateStart;
+
+  // 创建数据库连接
   const connection = mysql.createConnection(dbConfig);
+
+  // 将 connection.query 方法转换为支持 Promise 的形式
   const query = util.promisify(connection.query).bind(connection);
   const end = util.promisify(connection.end).bind(connection);
-  let getQuery = `
-    select COUNT(1) as amount from stockdata.stock_history_trade sht where trade_date=?;
-  `
+
+  // 查询 SQL 语句
+  const getQuery = `
+    SELECT sac.stock_code, sbi.stock_ch_name, sac.analyse_date, sac.one_month_change,
+           sac.one_month_change_date, sac.analyse_day_price, sac.purchase_price, sac.anylse_method
+    FROM stockdata.stock_analyse_collection sac
+    INNER JOIN stockdata.stock_basic_info sbi ON sac.stock_code = sbi.stock_code
+    WHERE sac.analyse_date BETWEEN ? AND ?
+    ORDER BY sbi.stock_code, sac.analyse_date;
+  `;
+
   try {
-    const result = await query(getQuery,[tradeData]);
-    return result;
+    // 执行查询
+    const results = await query(getQuery, [analyseDateStart, analyseDateEnd]);
+
+    // 获取字段名
+    const fields = Object.keys(results[0] || {});
+    const headers = fields.map(field => field.trim());
+
+    // 将结果转换为二维数组
+    const rows = results.map(result => {
+      return headers.map(header => result[header]);
+    });
+
+    // 返回结果
+    return {
+      headers: headers,
+      rows: rows
+    };
   } catch (error) {
-    throw new Error(
-      "Error executing getDailyTradeStockAmount::" + error.message
-    );
+    // 捕获并抛出错误
+    throw new Error(`Error executing getAnalseStockList: ${error.message}`);
   } finally {
+    // 关闭数据库连接
     await end();
   }
-}
+};
 
 const _ = require("lodash");
-const { info } = require("console");
 // 按照日期/代码获取股票历史数据
 exports.getHistoryTradeData = async (startDate, endDate) => {
-  const dataGrouped = await getDataGrouped(startDate, endDate);
-  return dataGrouped;
-}
-
-async function getDataGrouped(startDate, endDate) {
   const connection = mysql.createConnection(dbConfig);
   const query = util.promisify(connection.query).bind(connection);
   const end = util.promisify(connection.end).bind(connection);
@@ -337,20 +359,21 @@ async function getDataGrouped(startDate, endDate) {
   }
 }
 
+
 //股票分析数据写入数据库
 exports.setAnalyseData = async (data) => {
   const connection = mysql.createConnection(dbConfig);
   const query = util.promisify(connection.query).bind(connection);
   const end = util.promisify(connection.end).bind(connection);
   const insertQuery = `
-   INSERT ignore INTO stock_analyse_collection (stock_code, analyse_date, one_month_change, one_month_change_date,analyse_day_price, purchase_price,anylse_method)
+   INSERT ignore INTO stockdata.stock_analyse_collection (stock_code, analyse_date, one_month_change, one_month_change_date,analyse_day_price, purchase_price,anylse_method)
         VALUES ?
   `;
   try {
     // 执行插入
     await query(insertQuery, [data]);
   } catch (error) {
-    logger.error('setAnalyseData failed:', error.message);
+    logger.error('setAnalyseData failed:::'+ error.message);
     throw error;
   } finally {
     await end();
