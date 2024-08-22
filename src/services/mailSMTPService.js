@@ -56,24 +56,32 @@ exports.getAnalyseTableTemplete = (headers, rows,tableTitle) => {
       padding: 8px;
       text-align: center;
       font-size: 12px;
+      font-weight: bold; /* 表头字体加粗 */
     `;
-  const conditionalStyle = `
+  const raiseStyle = `
       color: #c12c1f
     `;
+  const downStyle = `
+    color: #1fc12c
+  `;
+  const equalStyle = `
+    color: #b2b6b6
+  `;
 
   const tableHeader = headers.map(header =>
     `<th style="${headerStyles}">${header}</th>`
   ).join('');
-
+  
   // 排序行数据
   // const sortedRows = rows.sort((a, b) => parseInt(a[1]) - parseInt(b[1]));
 
   const tableRows = rows.map(row => {
     const cells = row.map((cell, index) => {
-      // 条件判断：如果年龄低于27，则设置颜色为红色
-      // const isAgeBelow27 = index === 1 && parseInt(cell) < 27;
-      // return `<td style="${cellStyles} ${isAgeBelow27 ? conditionalStyle : ''}">${cell}</td>`;
-      return `<td style="${cellStyles}">${cell}</td>`;
+      // 条件判断：涨红跌绿平灰
+      const isRaiseBelow0 = index === 3 && parseFloat(cell) < 0;
+      const isRaiseEqual0 = index === 3 && parseFloat(cell) === 0;
+      const isRaiseUp0 = index === 3 && parseFloat(cell) > 0;
+      return `<td style="${cellStyles} ${isRaiseBelow0 ? downStyle : isRaiseEqual0? equalStyle:isRaiseUp0?raiseStyle:''}">${cell}</td>`;
     }).join('');
 
     return `<tr>${cells}</tr>`;

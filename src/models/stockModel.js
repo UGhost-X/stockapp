@@ -285,11 +285,9 @@ exports.getDailyTradeStockAmount = async (tradeData) => {
   }
 }
 
-// 获取股票分析数据
+// 获取股票任意时长分析数据
 exports.getAnalseStockList = async (analyseDateStart, analyseDateEnd) => {
   analyseDateEnd = analyseDateEnd || analyseDateStart;
-
-  logger.info(analyseDateStart + "::::" + analyseDateEnd)
 
   // 创建数据库连接
   const connection = mysql.createConnection(dbConfig);
@@ -300,8 +298,13 @@ exports.getAnalseStockList = async (analyseDateStart, analyseDateEnd) => {
 
   // 查询 SQL 语句
   const getQuery = `
-    SELECT sac.stock_code, sbi.stock_ch_name, sac.analyse_date, sac.one_month_change,
-           sac.one_month_change_date, sac.analyse_day_price, sac.purchase_price, sac.anylse_method
+    SELECT sac.stock_code '代码'
+    , sbi.stock_ch_name '名称'
+    , sac.analyse_date '分析日期'
+    , sac.one_month_change '一月涨跌幅'
+    ,sac.one_month_change_date '更新日期'
+    , DATEDIFF(sac.one_month_change_date,sac.analyse_date) '累计持股时长'
+    , sac.anylse_method '分析方法'
     FROM stockdata.stock_analyse_collection sac
     INNER JOIN stockdata.stock_basic_info sbi ON sac.stock_code = sbi.stock_code
     WHERE sac.analyse_date BETWEEN ? AND ? ORDER BY sac.one_month_change desc, sac.analyse_date,sbi.stock_code;
@@ -318,11 +321,6 @@ exports.getAnalseStockList = async (analyseDateStart, analyseDateEnd) => {
     // 将结果转换为二维数组
     const rows = results.map(result => {
       return headers.map(header => result[header]);
-    });
-
-    logger.info({
-      headers: headers,
-      rows: rows
     });
 
     // 返回结果
@@ -387,18 +385,41 @@ exports.setAnalyseData = async (data) => {
 }
 
 //获取股票分析数据一个月
-exports.getAnalyseStockDataMonth = async (endDate) => {
+exports.getAnalyseStockDataMonth = async (latestDate) => {
   const connection = mysql.createConnection(dbConfig);
   const query = util.promisify(connection.query).bind(connection);
   const end = util.promisify(connection.end).bind(connection);
-  const insertQuery = `
-   select * from stockdata.stock_analyse_collection sac 
-   where analyse_date between DATE_SUB(?, INTERVAL 1 MONTH)and ? 
-   order by analyse_date ,one_month_change desc;
+  const datatQuery = `
+    select sac.stock_code '代码'
+    ,sbi.stock_ch_name '名称'
+    ,sac.analyse_date '分析日期'
+    ,sac.one_month_change '一月涨跌幅'
+    ,sac.one_month_change_date '更新日期'
+    , DATEDIFF(sac.one_month_change_date,sac.analyse_date) '累计持股时长'
+    ,sac.anylse_method '分析方法'
+    from stockdata.stock_analyse_collection sac
+    inner join stockdata.stock_basic_info sbi on sac.stock_code = sbi.stock_code 
+    where analyse_date BETWEEN DATE_SUB(?, INTERVAL 1 MONTH)
+            AND DATE_SUB(?, INTERVAL 1 DAY)
+    order by sac.analyse_date,sac.one_month_change desc ,sac.stock_code;
   `;
   try {
     // 执行插入
-    await query(insertQuery, [endDate, endDate]);
+    const results = await query(datatQuery, [latestDate, latestDate]);
+        // 获取字段名
+        const fields = Object.keys(results[0] || {});
+        const headers = fields.map(field => field.trim());
+    
+        // 将结果转换为二维数组
+        const rows = results.map(result => {
+          return headers.map(header => result[header]);
+        });
+    
+        // 返回结果
+        return {
+          headers: headers,
+          rows: rows
+        };
   } catch (error) {
     logger.error('getAnalyseStockDataMonth failed:::' + error.message);
     throw error;
@@ -412,12 +433,11 @@ exports.updateStockAnalyseOneMonth = async (latestDate) => {
   const connection = mysql.createConnection(dbConfig);
   const query = util.promisify(connection.query).bind(connection);
   const end = util.promisify(connection.end).bind(connection);
-  const insertQuery = `
+  const updateQuery = `
    WITH stockAnalyse AS (
     SELECT stock_code, analyse_date, purchase_price
     FROM stockdata.stock_analyse_collection sac
-    WHERE analyse_date BETWEEN DATE_SUB(?, INTERVAL 1 MONTH)
-        AND ?
+    where analyse_date < ?
   ),
   maxTradeDates AS (
       SELECT stock_code, MAX(trade_date) AS max_trade_date
@@ -455,8 +475,7 @@ exports.updateStockAnalyseOneMonth = async (latestDate) => {
       END;
   `;
   try {
-    // 执行插入
-    await query(insertQuery, [latestDate, latestDate]);
+    await query(updateQuery,[latestDate]);
   } catch (error) {
     logger.error('getAnalyseStockDataMonth failed:::' + error.message);
     throw error;

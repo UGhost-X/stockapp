@@ -11,7 +11,7 @@ global.syncDailyTradeInfoEmailContent = "";
 
 exports.syncDailyStockTradeDataSchedular = async () => {
   logger.info("syncDailyStockTradeDataSchedular had registed")
-  cron.schedule("50 21 * * *", async () => {
+  cron.schedule("21 1 * * *", async () => {
     logger.info("Get All Stocks Data Task Starting....");
     await stockTask.syncDailyStockTradeDataTask();
   });

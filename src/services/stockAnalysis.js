@@ -126,9 +126,9 @@ exports.volumeEnergyService = async (dataGrouped, delay) => {
                     ? closePriceMeta[0] / openPriceMeta[delay-1]
                     : closePriceMeta[delay-24] / openPriceMeta[delay-1];
                 oneMonthChange = isNaN(oneMonthChange)||oneMonthChange==='undefined'||oneMonthChange==='' ? 0 : Math.round(oneMonthChange*100-100,3);  
-                const deadline = moment(tradeDate[delay - 24 < 0?0:delay - 24]).format('YYYY-MM-DD'); // 假设 date 是列名
+                const deadline = moment(tradeDate[delay - 24 < 0?0:delay - 24]).format('YYYY-MM-DD'); 
                 const analyseDatePrice = closePrice[0];
-                const purchasePrice = Math.round((closePrice[0]+openPrice[0])/2,2);
+                const purchasePrice = (closePrice[0]+openPrice[0])/2;
                 seedStock.push([name, analyseDate, oneMonthChange, deadline,analyseDatePrice, purchasePrice, 'volumnEnerge']);
             } catch (error) {
                 logger.info(error.message);
@@ -136,9 +136,13 @@ exports.volumeEnergyService = async (dataGrouped, delay) => {
             }
 
         }
-        
         const endTimeAnalyse = Date.now();
-        logger.info(`${analyseDate} - 量能法分析耗时: ${endTimeAnalyse - startTimeAnalyse} ms`);
+        if(analyseDate===''){
+            logger.info("今日无数据");
+        }else{
+            logger.info(`${analyseDate} - 量能法分析耗时: ${endTimeAnalyse - startTimeAnalyse} ms`);
+        }
+        
         delay -= 1;
     }
     if (seedStock) {

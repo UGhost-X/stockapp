@@ -203,7 +203,6 @@ exports.sendEmailTest = async (req, res) => {
 
   try {
     const data = await stockService.getAnalyseStockListService(analyseDateStart, analyseDateEnd);
-    logger.info("data:::" + data);
     const tableHtml = generateTableHtml(data.headers, data.rows);
     logger.info("邮件正在发送...");
     await sendMailService.sendMailService('test', "hello world", tableHtml);
@@ -222,7 +221,7 @@ exports.getStockHistoryTradeDataFromDB = async (req, res) => {
     logger.info("数据开始分析.......");
     const dataGrouped = await stockAnalysis.getHistoryTradeDataService(startDate, endDate);
     logger.info("获取数据已完成...");
-    await stockAnalysis.volumeEnergyService(dataGrouped, 0);
+    await stockAnalysis.volumeEnergyService(dataGrouped, 30);
     logger.info("数据分析已完成...");
     res.status(200).json({
       message: "getStockHistoryTradeDataFromDB success"

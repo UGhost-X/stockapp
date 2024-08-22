@@ -157,12 +157,34 @@ exports.getDailyTradeStockAmountService = (tradeData) => {
 }
 
 //获取股票分析结果数据服务
-exports.getAnalyseStockListService = async (analyseDateStart,analyseDateEnd) =>{
+exports.getAnalyseStockListService = async (analyseDateStart, analyseDateEnd) => {
   try {
-    return await stockModel.getAnalseStockList(analyseDateStart,analyseDateEnd);
+    return await stockModel.getAnalseStockList(analyseDateStart, analyseDateEnd);
   } catch (error) {
     throw new Error(
       "Error Excuting getAnalyseStockListService::" + error.message
+    );
+  }
+}
+
+//更新股票分析数据的累计涨跌情况
+exports.updateStockAnalyseOneMonthService = async (latestDate) => {
+  try {
+    return await stockModel.updateStockAnalyseOneMonth(latestDate);
+  } catch (error) {
+    throw new Error(
+      "Error Excuting updateStockAnalyseOneMonthService::" + error.message
+    );
+  }
+}
+
+//获取近一个月股票分析结果
+exports.getLatestMonthAnalyseSituationService = async (latestDate) => {
+  try {
+    return await stockModel.getAnalyseStockDataMonth(latestDate);
+  } catch (error) {
+    throw new Error(
+      "Error Excuting getLatestMonthAnalyseSituationService::" + error.message
     );
   }
 }

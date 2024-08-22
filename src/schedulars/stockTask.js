@@ -3,6 +3,7 @@ const sendMailService = require("../services/mailSMTPService");
 const stockAnalysis = require("../services/stockAnalysis");
 const logger = require("../../config/logconfig");
 const moment = require('moment');
+const { info } = require("winston");
 
 
 function sleep(ms) {
@@ -14,7 +15,7 @@ function sleep(ms) {
 exports.syncDailyStockTradeDataTask = async () => {
   try {
     const latestTradeDate = await stockService.getLatestTradeDate();
-    const dateNow = moment(Date.now()).format("YYYY-MM-DD");
+    // const dateNow = moment(Date.now()).format("YYYY-MM-DD");
     const latestDate = moment(latestTradeDate).format("YYYY-MM-DD");
     if (moment(Date.now()).isAfter(latestDate, 'd')) {
       logger.info("当前非交易日或非交易时间");
@@ -35,11 +36,16 @@ exports.syncDailyStockTradeDataTask = async () => {
     logger.info("获取数据已完成...");
     await stockAnalysis.volumeEnergyService(dataGrouped, 0);
     logger.info("数据分析已完成...");
-    const dataAnalyseList = await stockService.getAnalyseStockListService(latestDate);
+    await stockService.updateStockAnalyseOneMonthService(latestDate)
+    logger.info("更新分析数据跟踪情况已经完成")
+    const dataAnalyseList1 = await stockService.getAnalyseStockListService(latestDate);
+    const dataAnalyseList2 = await stockService.getLatestMonthAnalyseSituationService(latestDate);
     logger.info("获取分析数据列表已完成...");
-    let tableHtml = sendMailService.getAnalyseTableTemplete(dataAnalyseList.headers, dataAnalyseList.rows,latestDate+" 数据分析情况");
+    let tableHtml1 = sendMailService.getAnalyseTableTemplete(dataAnalyseList1.headers, dataAnalyseList1.rows, latestDate + " 数据分析情况");
+    let tableHtml2 = sendMailService.getAnalyseTableTemplete(dataAnalyseList2.headers, dataAnalyseList2.rows, latestDate + " 前数据分析跟踪情况");
+    let tableHtml = tableHtml1 + tableHtml2;
     const syncAmount = await stockService.getDailyTradeStockAmountService(latestDate);
-    if(dataAnalyseList.rows.length===0){
+    if (dataAnalyseList1.rows.length === 0) {
       tableHtml = `
         <h3> 所有数据已经同步完成,同步数据量:: ${syncAmount[0].amount},今日无筛选结果 </h3>
       `
