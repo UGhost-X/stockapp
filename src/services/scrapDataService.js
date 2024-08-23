@@ -1,43 +1,29 @@
-let request = require("request");
+const axios = require("axios")
 const stockModel = require("../models/stockModel.js");
 const logger = require("../../config/logconfig.js");
 
 //获取最新的交易日期
-let getLatestTradeDateOptions = {
-  method: "GET",
-  url: "https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=0.399001&fields1=f1&fields2=f51&klt=101&fqt=1&end=20500101&lmt=1",
-};
-exports.getLatestTradeDate = () => {
-  return new Promise((resolve, reject) => {
-    request(getLatestTradeDateOptions, (error, response) => {
-      if (error) {
-        reject(error);
-      } else {
-        const data = JSON.parse(response.body);
-        resolve(data.data.klines[0]);
-      }
-    });
-  });
+exports.getLatestTradeDate = async () => {
+  const url = "https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=0.399001&fields1=f1&fields2=f51&klt=101&fqt=1&end=20500101&lmt=1";
+  try {
+    const response = await axios.get(url);
+    const data = response.data;
+    return data.data.klines[0];
+  } catch (error) {
+    throw new Error("Error executing getLatestTradeDate: " + error.message);
+  }
 };
 
 //获取所有股票当日交易数据
-exports.getAllStcokDailyTradeData = () => {
-  //获取全体个股当日数据
-  let getAllStcokDailyTradeDataOptions = {
-    method: "GET",
-    url: "https://72.push2.eastmoney.com/api/qt/clist/get?pn=1&pz=12000&po=1&np=1&fltt=2&invt=0&dect=1&fid=f3&fs=m:0+t:6,m:0+t:80,m:1+t:2&fields=f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f12,f13,f14,f15,f16,f17,f18,f20,f21,f23,f24,f25,f22,f11,f62,f128,f136,f115,f152",
-  };
-  return new Promise((resolve, reject) => {
-    request(getAllStcokDailyTradeDataOptions, (error, response) => {
-      if (error) {
-        reject(error);
-      } else {
-        resolve(response.body);
-      }
-    });
-  });
+exports.getAllStcokDailyTradeData = async () => {
+  const url = "https://72.push2.eastmoney.com/api/qt/clist/get?pn=1&pz=12000&po=1&np=1&fltt=2&invt=0&dect=1&fid=f3&fs=m:0+t:6,m:0+t:80,m:1+t:2&fields=f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f12,f13,f14,f15,f16,f17,f18,f20,f21,f23,f24,f25,f22,f11,f62,f128,f136,f115,f152";
+  try {
+    const response = await axios.get(url);
+    return response.data;
+  } catch (error) {
+    throw new Error("Error executing getAllStcokDailyTradeData: " + error.message);
+  }
 };
-
 //同步每日个股数据到历史交易数据
 exports.syncDailyTradeData2HistoryTradeData = async (tradeData) => {
   await stockModel.insertDailyTradeData2HistoryTradeData(tradeData);
@@ -69,29 +55,26 @@ exports.getAllStockBasicInfo = async () => {
 
 //获取个股历史数据
 exports.getStockHistoryTradeData = async (secid, startDate, endDate, lmt) => {
+  // Format secid if necessary
   secid = secid.includes(".")
     ? secid
     : secid.startsWith("0") || secid.startsWith("3")
       ? "0." + secid
       : "1." + secid;
+
+  // Set default values if not provided
   startDate = startDate || 0;
   endDate = endDate || 20250101;
   lmt = lmt || 12000;
-  const url = `https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=${secid}&fields1=f1,f3,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=1&end=${endDate}&beg=${startDate}&lmt=${lmt}`;
-  let options = {
-    method: "GET",
-    url: url,
-  };
 
-  return new Promise((resolve, reject) => {
-    request(options, (error, response) => {
-      if (error) {
-        reject(error);
-      } else {
-        resolve(response.body);
-      }
-    });
-  });
+  const url = `https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=${secid}&fields1=f1,f3,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=1&end=${endDate}&beg=${startDate}&lmt=${lmt}`;
+
+  try {
+    const response = await axios.get(url);
+    return response.data;
+  } catch (error) {
+    throw new Error("Error executing getStockHistoryTradeData: " + error.message);
+  }
 };
 
 //将个股历史数据写入数据库
@@ -122,25 +105,13 @@ exports.saveStockHistoryTradeData = async (data, connection) => {
 //获取异常个股交易状态
 exports.getExceptStockState = async (code) => {
   const url = `http://gbapi.eastmoney.com/webarticlelist/api/Article/Articlelist?code=${code}`;
-  let options = {
-    method: "GET",
-    url: url,
-  };
-  try {
-    const data = await new Promise((resolve, reject) => {
-      request(options, (error, response) => {
-        if (error) {
-          reject(error);
-        } else {
-          resolve(response.body);
-        }
-      });
-    });
-    const dataJson = JSON.parse(data);
-    return dataJson.bar_info.Status;
 
+  try {
+    const response = await axios.get(url);
+    const dataJson = response.data;
+    return dataJson.bar_info.Status;
   } catch (error) {
-    throw new Error("Error Excuting getExceptStockState::" + error.message)
+    throw new Error("Error executing getExceptStockState: " + error.message);
   }
 };
 
