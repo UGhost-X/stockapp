@@ -22,10 +22,13 @@ exports.getAllStockDailyTradeDataFromDF = async (req, res) => {
 exports.getStockHistoryTradeDataFromDF = async (req, res) => {
   try {
     let { secid, startDate, endData, lmt } = req.query;
-    secid =
-      secid.startsWith("0") || secid.startsWith("3")
+    secid = secid.includes(".")
+      ? secid
+      : secid.startsWith("0") || secid.startsWith("3")
         ? "0." + secid
         : "1." + secid;
+
+
     const data = await stockService.getStockHistoryTradeData(
       secid,
       startDate,
@@ -127,7 +130,36 @@ exports.getExceptStockStateFromDF = async (req, res) => {
   }
 };
 
+//获取K线相关数据
+exports.getKlineDateFromDB = async (req, res) => {
+  const { code, startDate, endDate } = req.body;
+  logger.info(code + startDate + endDate);
+  try {
+    const results = await stockService.getKlineDataService(code, startDate, endDate);
+    res.status(200).json({
+      data: results.rows,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "getKlineDateFromDB failed::" + error.message,
+    });
+  }
+}
 
+//更新股票分析数据是否被标记
+exports.updateStockAnalyseIsMarkStatus = async (req, res) => {
+  const { code, analyseDate, analyseMethed, isMark } = req.query;
+  try {
+    await stockService.getKlineDataService(code, analyseDate, analyseMethed, isMark);
+    res.status(200).json({
+      message: "标记更新成功",
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "updateStockAnalyseIsMarkStatus failed::" + error.message,
+    });
+  }
+}
 
 
 
@@ -259,6 +291,7 @@ exports.syncStockTaskTest = async (req, res) => {
 
 
 const moment = require('moment');
+const { result } = require("lodash");
 //获取每日同步的数据量
 exports.getDailyTradeStockAmountTest = async (req, res) => {
   try {

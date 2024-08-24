@@ -21,18 +21,23 @@ exports.syncDailyStockTradeDataTask = async () => {
       logger.info("当前非交易日或非交易时间");
       return null;
     }
+    
     const data = await stockService.getAllStcokDailyTradeData();
     await stockService.saveAllStcokDailyTradeData(latestTradeDate, data);
     logger.info("所有个股当日交易数据已下载");
     await sleep(1000 * 30);
     await stockService.syncDailyTradeData2HistoryTradeData(latestTradeDate);
+    //三个主板的数据也需要更新getStockHistoryTradeData
+    await stockService.getStockHistoryTradeData('1.000001', latestDate, '20500101', 1);
+    await stockService.getStockHistoryTradeData('0.399006', latestDate, '20500101', 1);
+    await stockService.getStockHistoryTradeData('0.399001', latestDate, '20500101', 1);
     logger.info("所有个股当日交易数据已同步至历史交易数据");
     await sleep(1000 * 30);
     await stockService.syncStockBasicInfo();
     logger.info("所有个股基本信息已经同步完成");
     logger.info("数据开始分析.......");
     const historyStartDate = moment(latestTradeDate).subtract(18, 'months').format("YYYY-MM-DD");
-    const dataGrouped = await stockAnalysis.getHistoryTradeDataService(historyStartDate,latestDate);
+    const dataGrouped = await stockAnalysis.getHistoryTradeDataService(historyStartDate, latestDate);
     logger.info("获取数据已完成...");
     await stockAnalysis.volumeEnergyService(dataGrouped, 0);
     logger.info("数据分析已完成...");

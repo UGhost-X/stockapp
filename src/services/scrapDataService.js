@@ -30,8 +30,7 @@ exports.syncDailyTradeData2HistoryTradeData = async (tradeData) => {
 };
 
 //将全体个股写入数据库
-exports.saveAllStcokDailyTradeData = async (latestTradeDate, data) => {
-  const dataJson = JSON.parse(data);
+exports.saveAllStcokDailyTradeData = async (latestTradeDate, dataJson) => {
   const diffData = dataJson.data.diff;
   try {
     stockModel.setAllStockDailyTradeData(latestTradeDate, diffData);
@@ -53,9 +52,9 @@ exports.getAllStockBasicInfo = async () => {
   return result;
 };
 
-//获取个股历史数据
+//从DF获取个股历史数据
 exports.getStockHistoryTradeData = async (secid, startDate, endDate, lmt) => {
-  // Format secid if necessary
+  
   secid = secid.includes(".")
     ? secid
     : secid.startsWith("0") || secid.startsWith("3")
@@ -76,10 +75,14 @@ exports.getStockHistoryTradeData = async (secid, startDate, endDate, lmt) => {
     throw new Error("Error executing getStockHistoryTradeData: " + error.message);
   }
 };
+//从数据库获取个股历史数据
+exports.getStockHistoryTradeDataFromDB = async (secid, startDate, endDate)=>{
+
+}
 
 //将个股历史数据写入数据库
-exports.saveStockHistoryTradeData = async (data, connection) => {
-  const dataJson = JSON.parse(data);
+exports.saveStockHistoryTradeData = async (dataJson, connection) => {
+  // const dataJson = JSON.parse(data);
   const klines = dataJson.data.klines;
   let stockCode = dataJson.data.code;
   const stockName = dataJson.data.name;
@@ -102,7 +105,7 @@ exports.saveStockHistoryTradeData = async (data, connection) => {
   }
 };
 
-//获取异常个股交易状态
+//从DF获取异常个股交易状态
 exports.getExceptStockState = async (code) => {
   const url = `http://gbapi.eastmoney.com/webarticlelist/api/Article/Articlelist?code=${code}`;
 
@@ -156,6 +159,28 @@ exports.getLatestMonthAnalyseSituationService = async (latestDate) => {
   } catch (error) {
     throw new Error(
       "Error Excuting getLatestMonthAnalyseSituationService::" + error.message
+    );
+  }
+}
+
+//更新股票的标记状态，如果为1表示被选中
+exports.updateStockAnalyseIsMarkService = async (code,analyseDate,analyseMethed,isMark) =>{
+  try {
+    return await stockModel.updateStockAnalyseIsMark(code,analyseDate,analyseMethed,isMark);
+  } catch (error) {
+    throw new Error(
+      "Error Excuting updateStockAnalyseIsMarkService::" + error.message
+    );
+  }
+}
+
+//获取K线相关数据
+exports.getKlineDataService = async (code,startDate,endDate) => {
+  try {
+    return await stockModel.getKlineData(code,startDate,endDate);
+  } catch (error) {
+    throw new Error(
+      "Error Excuting getKlineDataService::" + error.message
     );
   }
 }

@@ -404,7 +404,6 @@ exports.getAnalyseStockDataMonth = async (latestDate) => {
     order by sac.analyse_date,sac.one_month_change desc ,sac.stock_code;
   `;
   try {
-    // 执行插入
     const results = await query(datatQuery, [latestDate, latestDate]);
         // 获取字段名
         const fields = Object.keys(results[0] || {});
@@ -478,6 +477,58 @@ exports.updateStockAnalyseOneMonth = async (latestDate) => {
     await query(updateQuery,[latestDate]);
   } catch (error) {
     logger.error('getAnalyseStockDataMonth failed:::' + error.message);
+    throw error;
+  } finally {
+    await end();
+  }
+}
+
+
+//更新分析结果中的股票是否被选中
+exports.updateStockAnalyseIsMark = async (code,analyseDate,analyseMethed,isMark) =>{
+  const connection = mysql.createConnection(dbConfig);
+  const query = util.promisify(connection.query).bind(connection);
+  const end = util.promisify(connection.end).bind(connection);
+  const updateQuery = `
+    UPDATE stockdata.stock_analyse_collection set is_mark = ? where 
+    analyse_date = ? and stock_code = ? and anylse_method = ?
+  `;
+  try {
+    await query(updateQuery,[isMark,analyseDate,code,analyseMethed]);
+  } catch (error) {
+    logger.error('updateStockAnalyseIsMark failed:::' + error.message);
+    throw error;
+  } finally {
+    await end();
+  }
+}
+
+//获取k线相关数据
+exports.getKlineData = async (code,startDate,endDate) => {
+  const connection = mysql.createConnection(dbConfig);
+  const query = util.promisify(connection.query).bind(connection);
+  const end = util.promisify(connection.end).bind(connection);
+  const dataQuery = `
+    select DATE_FORMAT(trade_date, '%Y-%m-%d'),open,close,low,high,pct_ratio,volume from stockdata.stock_history_trade 
+    where stock_code = ? and trade_date between ? and ?
+  `;
+  try {
+        const results =  await query(dataQuery,[code,startDate,endDate]);
+        // 获取字段名
+        const fields = Object.keys(results[0] || {});
+        const headers = fields.map(field => field.trim());
+        logger.info(fields);
+        // 将结果转换为二维数组
+        const rows = results.map(result => {
+          return headers.map(header => result[header]);
+        });
+    
+        // 返回结果
+        return {
+          rows: rows
+        };
+  } catch (error) {
+    logger.error('getKlineData failed:::' + error.message);
     throw error;
   } finally {
     await end();

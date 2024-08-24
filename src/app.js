@@ -4,7 +4,7 @@ const stockRoutes = require("./routes/stockRoutes");
 const logger = require("../config/logconfig");
 const cron = require("node-cron");
 const stockTask = require('./schedulars/stockTask')
-
+const cors = require('cors');
 
 global.syncDailyTradeInfoEmailContent = "";
 
@@ -18,6 +18,7 @@ exports.syncDailyStockTradeDataSchedular = async () => {
 }
 
 const app = express();
+app.use(cors());
 app.use(bodyParser.json());
 app.use("/", stockRoutes);
 

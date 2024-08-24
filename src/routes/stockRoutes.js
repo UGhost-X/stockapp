@@ -29,6 +29,17 @@ router.post(
   stockController.getExceptStockStateFromDF
 );
 
+//获取K线数据
+router.post(
+  "/getKlineDateFromDB",
+  stockController.getKlineDateFromDB
+);
+
+//更新股票标记状态
+router.post(
+  "/updateStockAnalyseIsMarkStatus",
+  stockController.updateStockAnalyseIsMarkStatus
+);
 
 
 //--------------测试---------------//
