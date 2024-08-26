@@ -1,0 +1,37 @@
+{
+  "name": "frontapp",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "vue-cli-service serve --port 9090",
+    "build": "vue-cli-service build"
+  },
+  "dependencies": {
+    "ant-design-vue": "^4.1.2",
+    "axios": "^1.7.5",
+    "core-js": "^3.8.3",
+    "echarts": "^5.5.1",
+    "element-plus": "^2.8.0",
+    "lodash": "^4.17.21",
+    "moment": "^2.30.1",
+    "node-polyfill-webpack-plugin": "^4.0.0",
+    "vue": "^3.2.13",
+    "vue-echarts": "^7.0.3",
+    "vue-router": "^4.0.3",
+    "vue-wechat-title": "^2.0.7",
+    "vue3-seamless-scroll": "^2.0.1",
+    "vue3-toastify": "^0.2.2",
+    "vuex": "^4.0.0"
+  },
+  "devDependencies": {
+    "@vue/cli-plugin-babel": "~5.0.0",
+    "@vue/cli-plugin-router": "~5.0.0",
+    "@vue/cli-plugin-typescript": "~5.0.0",
+    "@vue/cli-plugin-vuex": "~5.0.0",
+    "@vue/cli-service": "~5.0.0",
+    "babel-plugin-import": "^1.13.8",
+    "less": "^4.0.0",
+    "less-loader": "^8.0.0",
+    "typescript": "~4.5.5"
+  }
+}
