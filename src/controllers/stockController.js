@@ -6,6 +6,17 @@ const logger = require("../../config/logconfig");
 const sendMailService = require("../services/mailSMTPService");
 
 
+//获取股票最新交易日期
+exports.getLatestTradeDate = async (req, res) => {
+  try {
+    const latestTradeDate = await stockService.getLatestTradeDate();
+    res.status(200).json({ data: latestTradeDate });
+  }
+  catch (error) {
+    res.status(500).json({ message: "getLatestTradeDate failed" + error.message });
+  }
+}
+
 //获取所有股票当日交易数据
 exports.getAllStockDailyTradeDataFromDF = async (req, res) => {
   try {
@@ -35,7 +46,7 @@ exports.getStockHistoryTradeDataFromDF = async (req, res) => {
       endData,
       lmt
     );
-    const connection = await stockModel.getMySqlConnection(); // 创建数据库连接
+    const connection = await stockModel.getMySqlConnection();
     await stockService.saveStockHistoryTradeData(data, connection);
     res.status(200).json({ message: "get stock history trade data success" });
   } catch (error) {
@@ -133,7 +144,6 @@ exports.getExceptStockStateFromDF = async (req, res) => {
 //获取K线相关数据
 exports.getKlineDateFromDB = async (req, res) => {
   const { code, startDate, endDate } = req.body;
-  logger.info(code + startDate + endDate);
   try {
     const results = await stockService.getKlineDataService(code, startDate, endDate);
     res.status(200).json({
@@ -148,7 +158,7 @@ exports.getKlineDateFromDB = async (req, res) => {
 
 //更新股票分析数据是否被标记
 exports.updateStockAnalyseIsMarkStatus = async (req, res) => {
-  const { code, analyseDate, analyseMethed, isMark } = req.query;
+  const { code, analyseDate, analyseMethed, isMark } = req.body;
   try {
     await stockService.getKlineDataService(code, analyseDate, analyseMethed, isMark);
     res.status(200).json({
@@ -161,10 +171,36 @@ exports.updateStockAnalyseIsMarkStatus = async (req, res) => {
   }
 }
 
+//获取预警数据
+exports.getStockWaringData = async (req, res) => {
+  const { warningDate, warningCreteria } = req.body;
+  try {
+    const results = await stockService.getStockWarningDataService(warningDate, warningCreteria);
+    res.status(200).json({
+      data: results,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "updateStockAnalyseIsMarkStatus failed::" + error.message,
+    });
+  }
+}
 
 
-
-
+//获取历史最低预警数据
+exports.getStockWaringhistoryMinData = async (req, res) => {
+  const { warningDate } = req.body;
+  try {
+    const results = await stockService.getStockWarningHistoryMinService(warningDate);
+    res.status(200).json({
+      data: results,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "getStockWaringhistoryMinData failed::" + error.message,
+    });
+  }
+}
 
 
 // ----------------------测试-------------------------------------//
@@ -291,7 +327,6 @@ exports.syncStockTaskTest = async (req, res) => {
 
 
 const moment = require('moment');
-const { result } = require("lodash");
 //获取每日同步的数据量
 exports.getDailyTradeStockAmountTest = async (req, res) => {
   try {

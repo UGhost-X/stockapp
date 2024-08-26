@@ -2,6 +2,13 @@ const express = require("express");
 const router = express.Router();
 const stockController = require("../controllers/stockController");
 
+//获取股票最新交易日
+router.get(
+  "/getLatestTradeDate",
+  stockController.getLatestTradeDate
+);
+
+
 //获取所有个股当日交易数据
 router.get(
   "/getAllStockDailyTradeDataFromDF",
@@ -39,6 +46,17 @@ router.post(
 router.post(
   "/updateStockAnalyseIsMarkStatus",
   stockController.updateStockAnalyseIsMarkStatus
+);
+
+//获取预警数据
+router.post(
+  "/getStockWaringData",
+  stockController.getStockWaringData
+);
+//获取历史最低预警数据
+router.post(
+  "/getStockWaringhistoryMinData",
+  stockController.getStockWaringhistoryMinData
 );
 
 

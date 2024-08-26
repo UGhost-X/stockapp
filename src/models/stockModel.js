@@ -345,7 +345,7 @@ exports.getHistoryTradeData = async (startDate, endDate) => {
   const end = util.promisify(connection.end).bind(connection);
 
   const dataQuery = `
-    SELECT stock_code, stock_ch_name,trade_date, close, high, open, pct_ratio 
+    SELECT stock_code, stock_ch_name,trade_date, close, high, open, pct_ratio ,low
     FROM stockdata.stock_history_trade
     WHERE  (trade_date BETWEEN ? AND ? ) order by trade_date desc ,stock_code
   `;
@@ -405,20 +405,20 @@ exports.getAnalyseStockDataMonth = async (latestDate) => {
   `;
   try {
     const results = await query(datatQuery, [latestDate, latestDate]);
-        // 获取字段名
-        const fields = Object.keys(results[0] || {});
-        const headers = fields.map(field => field.trim());
-    
-        // 将结果转换为二维数组
-        const rows = results.map(result => {
-          return headers.map(header => result[header]);
-        });
-    
-        // 返回结果
-        return {
-          headers: headers,
-          rows: rows
-        };
+    // 获取字段名
+    const fields = Object.keys(results[0] || {});
+    const headers = fields.map(field => field.trim());
+
+    // 将结果转换为二维数组
+    const rows = results.map(result => {
+      return headers.map(header => result[header]);
+    });
+
+    // 返回结果
+    return {
+      headers: headers,
+      rows: rows
+    };
   } catch (error) {
     logger.error('getAnalyseStockDataMonth failed:::' + error.message);
     throw error;
@@ -474,7 +474,7 @@ exports.updateStockAnalyseOneMonth = async (latestDate) => {
       END;
   `;
   try {
-    await query(updateQuery,[latestDate]);
+    await query(updateQuery, [latestDate]);
   } catch (error) {
     logger.error('getAnalyseStockDataMonth failed:::' + error.message);
     throw error;
@@ -485,7 +485,7 @@ exports.updateStockAnalyseOneMonth = async (latestDate) => {
 
 
 //更新分析结果中的股票是否被选中
-exports.updateStockAnalyseIsMark = async (code,analyseDate,analyseMethed,isMark) =>{
+exports.updateStockAnalyseIsMark = async (code, analyseDate, analyseMethed, isMark) => {
   const connection = mysql.createConnection(dbConfig);
   const query = util.promisify(connection.query).bind(connection);
   const end = util.promisify(connection.end).bind(connection);
@@ -494,7 +494,7 @@ exports.updateStockAnalyseIsMark = async (code,analyseDate,analyseMethed,isMark)
     analyse_date = ? and stock_code = ? and anylse_method = ?
   `;
   try {
-    await query(updateQuery,[isMark,analyseDate,code,analyseMethed]);
+    await query(updateQuery, [isMark, analyseDate, code, analyseMethed]);
   } catch (error) {
     logger.error('updateStockAnalyseIsMark failed:::' + error.message);
     throw error;
@@ -504,7 +504,7 @@ exports.updateStockAnalyseIsMark = async (code,analyseDate,analyseMethed,isMark)
 }
 
 //获取k线相关数据
-exports.getKlineData = async (code,startDate,endDate) => {
+exports.getKlineData = async (code, startDate, endDate) => {
   const connection = mysql.createConnection(dbConfig);
   const query = util.promisify(connection.query).bind(connection);
   const end = util.promisify(connection.end).bind(connection);
@@ -513,22 +513,201 @@ exports.getKlineData = async (code,startDate,endDate) => {
     where stock_code = ? and trade_date between ? and ?
   `;
   try {
-        const results =  await query(dataQuery,[code,startDate,endDate]);
-        // 获取字段名
-        const fields = Object.keys(results[0] || {});
-        const headers = fields.map(field => field.trim());
-        logger.info(fields);
-        // 将结果转换为二维数组
-        const rows = results.map(result => {
-          return headers.map(header => result[header]);
-        });
-    
-        // 返回结果
-        return {
-          rows: rows
-        };
+    const results = await query(dataQuery, [code, startDate, endDate]);
+    // 获取字段名
+    const fields = Object.keys(results[0] || {});
+    const headers = fields.map(field => field.trim());
+    // 将结果转换为二维数组
+    const rows = results.map(result => {
+      return headers.map(header => result[header]);
+    });
+
+    // 返回结果
+    return {
+      rows: rows
+    };
   } catch (error) {
     logger.error('getKlineData failed:::' + error.message);
+    throw error;
+  } finally {
+    await end();
+  }
+}
+
+//预警信息写入数据库
+exports.setStockWarningData = async (data) => {
+  const connection = mysql.createConnection(dbConfig);
+  const query = util.promisify(connection.query).bind(connection);
+  const commit = util.promisify(connection.commit).bind(connection);
+  const end = util.promisify(connection.end).bind(connection);
+  const insertQuery = `
+    INSERT IGNORE INTO stock_warning_cellection 
+    (stock_code, stock_ch_name, warning_date, open, close, high, low, warning_creteria) 
+    VALUES ?;
+  `;
+  const updateQuery = `
+  UPDATE stockdata.stock_warning_cellection swc
+  inner join stockdata.stock_basic_info sbi on swc.stock_code = sbi.stock_code 
+  set swc.stock_ch_name = sbi.stock_ch_name;
+  `
+  try {
+    await query(insertQuery, [data]);
+    await query(updateQuery);
+    await commit();
+  } catch (error) {
+    throw new Error(
+      "Error executing setStockWarningData::" + error.message
+    )
+  } finally {
+    await end()
+  };
+}
+//获取预警板数据
+exports.getStockWarningData = async (warningDate, waringCreteria) => {
+  const connection = mysql.createConnection(dbConfig);
+  const query = util.promisify(connection.query).bind(connection);
+  const end = util.promisify(connection.end).bind(connection);
+
+  const dataQuery = `
+    SELECT stock_code, stock_ch_name, close, warning_date 
+    FROM stock_warning_cellection
+    WHERE warning_date = ? AND warning_creteria = ?
+    ORDER BY 
+      CASE 
+        WHEN LEFT(stock_code, 1) = '6' THEN 1
+        WHEN LEFT(stock_code, 1) = '0' THEN 2
+        ELSE 3
+      END,
+      stock_code;
+  `;
+
+  const countQuery = `
+    SELECT COUNT(*) AS totalCount 
+    FROM stock_warning_cellection
+    WHERE warning_date = ? AND warning_creteria = ? ;
+  `;
+
+  try {
+    // 获取数据
+    const results = await query(dataQuery, [warningDate, waringCreteria]);
+
+    // 获取总数
+    const countResult = await query(countQuery, [warningDate, waringCreteria]);
+    const totalCount = countResult[0].totalCount;
+
+    // 获取字段名
+    const fields = Object.keys(results[0] || {});
+    const headers = fields.map(field => field.trim());
+
+    // 将结果转换为二维数组
+    const rows = results.map(result => {
+      return headers.map(header => result[header]);
+    });
+
+    // 返回结果
+    return {
+      totalCount: totalCount,
+      headers: headers,
+      rows: rows
+    };
+  } catch (error) {
+    logger.error('getStockWarningData failed:::' + error.message);
+    throw error;
+  } finally {
+    await end();
+  }
+};
+
+//计算历史最低值
+exports.calcHistoryMinClose = async () => {
+  const connection = mysql.createConnection(dbConfig);
+  const query = util.promisify(connection.query).bind(connection);
+  const commit = util.promisify(connection.commit).bind(connection);
+  const end = util.promisify(connection.end).bind(connection);
+  const insertQuery = `
+   insert ignore into stock_min_close SELECT 
+    stock_code, 
+    MIN(close) AS minClose, 
+        MAX(trade_date) AS maxDate 
+    FROM 
+        stockdata.stock_history_trade 
+    WHERE 
+        trade_date BETWEEN DATE_SUB(CURRENT_DATE(), INTERVAL 10 YEAR) AND CURRENT_DATE()
+    GROUP BY 
+        stock_code
+    HAVING 
+        DATEDIFF(CURRENT_DATE(), MAX(trade_date)) < 10;
+  `;
+  const insertQuery2 = `
+  insert ignore into stockdata.stock_history_min_close
+      select * from (
+      SELECT 
+          tsmc.stock_code,
+          tsmc.minClose AS min_close,
+          tsmc.maxDate AS warning_date,
+          sht.\`close\`,
+          ((sht.\`close\` / tsmc.minClose) - 1) * 100 AS ps
+      FROM 
+          stockdata.stock_min_close tsmc
+      inner JOIN 
+          stockdata.stock_history_trade sht 
+      ON 
+          sht.stock_code = tsmc.stock_code and sht.trade_date = tsmc.maxDate
+      inner join stockdata.stock_basic_info sbi 
+      on sbi.stock_code = tsmc.stock_code
+      where tsmc.minClose > 2 and sbi.stock_trade_status = 'Normal' and DATEDIFF(CURDATE(),sbi.stock_listing_date)>3650 and sbi.stock_code not like '3%' ) b 
+      where ps BETWEEN -5 and 0;
+  `
+  try {
+    await query(insertQuery);
+    await query(insertQuery2);
+    await commit();
+  } catch (error) {
+    throw new Error(
+      "Error executing calcHistoryMinClose::" + error.message
+    )
+  } finally {
+    await end()
+  };
+}
+
+//获取历史最低值预警板数据
+exports.getStockWarningHistoryMinData = async (warningDate) => {
+  const connection = mysql.createConnection(dbConfig);
+  const query = util.promisify(connection.query).bind(connection);
+  const end = util.promisify(connection.end).bind(connection);
+  const dataQuery = `
+    select shmc.stock_code,sbi.stock_ch_name,shmc.close, DATE_FORMAT(shmc.warning_date , '%Y-%m-%d') from stockdata.stock_history_min_close shmc
+    inner join stockdata.stock_basic_info sbi 
+    on shmc.stock_code = sbi.stock_code 
+    where warning_date = ?;
+  `;
+  const countQuery = `
+  SELECT COUNT(*) AS totalCount 
+  FROM stock_history_min_close
+  WHERE warning_date = ?;
+`;
+  try {
+    // 获取数据
+    const results = await query(dataQuery, [warningDate]);
+    const countResult = await query(countQuery, [warningDate]);
+    const totalCount = countResult[0].totalCount;
+    // 获取字段名
+    const fields = Object.keys(results[0] || {});
+    const headers = fields.map(field => field.trim());
+
+    // 将结果转换为二维数组
+    const rows = results.map(result => {
+      return headers.map(header => result[header]);
+    });
+    // 返回结果
+    return {
+      totalCount: totalCount,
+      headers: headers,
+      rows: rows
+    };
+  } catch (error) {
+    logger.error('getStockWarningHistoryMinData failed:::' + error.message);
     throw error;
   } finally {
     await end();

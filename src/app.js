@@ -17,6 +17,14 @@ exports.syncDailyStockTradeDataSchedular = async () => {
   });
 }
 
+exports.calcHistoryMinCloseSchedular = async ()=>{
+  logger.info("calcHistoryMinCloseSchedular had registed")
+  cron.schedule("30 18 * * *", async () => {
+    logger.info("Calc History Min Close Task Starting....");
+    await stockTask.calcHistoryDailyMinCloseTask();
+  });
+}
+
 const app = express();
 app.use(cors());
 app.use(bodyParser.json());

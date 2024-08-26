@@ -65,9 +65,7 @@ exports.getStockHistoryTradeData = async (secid, startDate, endDate, lmt) => {
   startDate = startDate || 0;
   endDate = endDate || 20250101;
   lmt = lmt || 12000;
-
   const url = `https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=${secid}&fields1=f1,f3,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=1&end=${endDate}&beg=${startDate}&lmt=${lmt}`;
-
   try {
     const response = await axios.get(url);
     return response.data;
@@ -181,6 +179,39 @@ exports.getKlineDataService = async (code,startDate,endDate) => {
   } catch (error) {
     throw new Error(
       "Error Excuting getKlineDataService::" + error.message
+    );
+  }
+}
+
+//获取股票预警数据
+exports.getStockWarningDataService = async (waringDate,warningCreteria)=>{
+  try {
+    return await stockModel.getStockWarningData(waringDate,warningCreteria);
+  } catch (error) {
+    throw new Error(
+      "Error Excuting getStockWarningDataService::" + error.message
+    );
+  }
+}
+
+//获取历史最低股价
+exports.getStockWarningHistoryMinService = async (waringDate)=>{
+  try {
+    return await stockModel.getStockWarningHistoryMinData(waringDate);
+  } catch (error) {
+    throw new Error(
+      "Error Excuting getStockWarningHistoryMinService::" + error.message
+    );
+  }
+}
+
+//历史最低股价计算服务
+exports.calcStockWarningHistoryMinService = async ()=>{
+  try {
+    await stockModel.calcHistoryMinClose();
+  } catch (error) {
+    throw new Error(
+      "Error Excuting calcStockWarningHistoryMinService::" + error.message
     );
   }
 }

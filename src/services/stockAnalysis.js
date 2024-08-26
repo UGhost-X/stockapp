@@ -2,6 +2,7 @@ const stockModel = require("../models/stockModel.js");
 const logger = require("../../config/logconfig.js");
 const moment = require('moment');
 const _ = require("lodash");
+const { log } = require("util");
 
 exports.getHistoryTradeDataService = async (startDate, endDate) => {
     const result = await stockModel.getHistoryTradeData(startDate, endDate);
@@ -123,13 +124,13 @@ exports.volumeEnergyService = async (dataGrouped, delay) => {
                 const openPriceMeta = group.map(item => item.open);
 
                 let oneMonthChange = delay - 24 < 0
-                    ? closePriceMeta[0] / openPriceMeta[delay-1]
-                    : closePriceMeta[delay-24] / openPriceMeta[delay-1];
-                oneMonthChange = isNaN(oneMonthChange)||oneMonthChange==='undefined'||oneMonthChange==='' ? 0 : Math.round(oneMonthChange*100-100,3);  
-                const deadline = moment(tradeDate[delay - 24 < 0?0:delay - 24]).format('YYYY-MM-DD'); 
+                    ? closePriceMeta[0] / openPriceMeta[delay - 1]
+                    : closePriceMeta[delay - 24] / openPriceMeta[delay - 1];
+                oneMonthChange = isNaN(oneMonthChange) || oneMonthChange === 'undefined' || oneMonthChange === '' ? 0 : Math.round(oneMonthChange * 100 - 100, 3);
+                const deadline = moment(tradeDate[delay - 24 < 0 ? 0 : delay - 24]).format('YYYY-MM-DD');
                 const analyseDatePrice = closePrice[0];
-                const purchasePrice = (closePrice[0]+openPrice[0])/2;
-                seedStock.push([name, analyseDate, oneMonthChange, deadline,analyseDatePrice, purchasePrice, 'volumnEnerge']);
+                const purchasePrice = (closePrice[0] + openPrice[0]) / 2;
+                seedStock.push([name, analyseDate, oneMonthChange, deadline, analyseDatePrice, purchasePrice, 'volumnEnerge']);
             } catch (error) {
                 logger.info(error.message);
                 continue;
@@ -137,12 +138,12 @@ exports.volumeEnergyService = async (dataGrouped, delay) => {
 
         }
         const endTimeAnalyse = Date.now();
-        if(analyseDate===''){
+        if (analyseDate === '') {
             logger.info("今日无数据");
-        }else{
+        } else {
             logger.info(`${analyseDate} - 量能法分析耗时: ${endTimeAnalyse - startTimeAnalyse} ms`);
         }
-        
+
         delay -= 1;
     }
     if (seedStock) {
@@ -151,3 +152,55 @@ exports.volumeEnergyService = async (dataGrouped, delay) => {
     }
 };
 
+//股票预警计算服务
+exports.stockWarningService = async (dataGrouped) => {
+    const seedStock = [];
+    let warningDate = '';
+
+    // 定义日期范围
+    const dateRanges = [5, 21, 169];
+
+    for (const [name, group] of Object.entries(dataGrouped)) {
+        if (!group[400]) {
+            continue;
+        }
+
+        // 获取今天的收盘价
+        const todayClosePrice = group[0].close;
+        if(todayClosePrice<=2 || todayClosePrice > 100){
+            continue
+        }
+        
+        const todayOpenPrice = group[0].open;
+        const todayLowPrice = group[0].low;
+        const todayHighPrice = group[0].high;
+        const raiseFallRange = group.map(item => item.pct_ratio);
+        // 记录今天的日期
+        warningDate = moment(group[0].trade_date).format('YYYY-MM-DD');
+        // 遍历每个日期范围
+        for (const range of dateRanges) {
+            // 获取过去N天的数据
+            const recentPrices = group.slice(0, range).map(item => item.close);
+            const recentRange = raiseFallRange.slice(0, 8);
+            // 找到最近N天的最低收盘价
+            const lowestClosePriceInRange = Math.min(...recentPrices);
+            // 判断今天的收盘价是否为过去N天的最低价
+            const isTodayLowest = todayClosePrice === lowestClosePriceInRange;
+
+            if (range !== 5 && isTodayLowest) {
+                seedStock.push([name, '', warningDate, todayOpenPrice, todayClosePrice, todayHighPrice, todayLowPrice, range])
+            }
+            if (range === 5 && Math.max(...recentRange) > 8 && isTodayLowest) {
+                seedStock.push([name, '', warningDate, todayOpenPrice, todayClosePrice, todayHighPrice, todayLowPrice, range])
+            }
+        }
+    }
+    if (seedStock) {
+        await stockModel.setStockWarningData(seedStock);
+        logger.info("预警数据插入已完成...");
+    }else{
+        logger.info('无数据')
+    }
+
+
+};
