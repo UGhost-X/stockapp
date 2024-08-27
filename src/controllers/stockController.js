@@ -156,6 +156,21 @@ exports.getKlineDateFromDB = async (req, res) => {
   }
 }
 
+//获取股票分析数据
+exports.getStockAnalyseDate = async (req, res) => {
+  const { startDate, endDate } = req.body;
+  try {
+    const results = await stockService.getAnalyseStockListService(startDate, endDate);
+    res.status(200).json({
+      data: results,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "getStockAnalyseDate failed::" + error.message,
+    });
+  }
+}
+
 //更新股票分析数据是否被标记
 exports.updateStockAnalyseIsMarkStatus = async (req, res) => {
   const { code, analyseDate, analyseMethed, isMark } = req.body;

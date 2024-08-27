@@ -59,6 +59,11 @@ router.post(
   stockController.getStockWaringhistoryMinData
 );
 
+//获取股票分析数据
+router.post(
+  "/getStockAnalyseDate",
+  stockController.getStockAnalyseDate
+);
 
 //--------------测试---------------//
 router.post(
