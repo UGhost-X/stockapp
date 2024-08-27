@@ -15,7 +15,7 @@ module.exports = defineConfig({
   devServer: {
     proxy: {
       '/api': {
-        target: 'http://172.18.182.82:3000', // 后端API服务器地址
+        target: process.env.VUE_APP_BASE_URL, // 后端API服务器地址
         changeOrigin: true, // 是否改变域名
         pathRewrite: {
           '^/api': '' // 移除路径前缀

@@ -1,14 +1,13 @@
 <template>
-    <article class="main" @mousewheel="scrollWheelEvent" @mousedown="mouseButonEvent">
-        <section ref="main" class="chart">
+    <article class="main" @mousewheel="scrollWheelEvent">
+        <section ref="chartContainer" class="chart">
         </section>
     </article>
-
 </template>
 
 <script setup>
-import { ref, onMounted, reactive } from "vue";
-import { debounce } from "lodash"
+import { ref, onMounted, watch, defineProps, defineEmits, reactive, onUpdated } from 'vue';
+import { debounce } from 'lodash';
 import * as echarts from 'echarts/core';
 import 'vue3-toastify/dist/index.css';
 import {
@@ -18,13 +17,13 @@ import {
     VisualMapComponent,
     LegendComponent,
     BrushComponent,
-    DataZoomComponent
+    DataZoomComponent,
+    TitleComponent
 } from 'echarts/components';
 import { CandlestickChart, LineChart, BarChart } from 'echarts/charts';
 import { UniversalTransition } from 'echarts/features';
 import { CanvasRenderer } from 'echarts/renderers';
-import axios from "axios";
-
+import axios from 'axios';
 echarts.use([
     ToolboxComponent,
     TooltipComponent,
@@ -37,10 +36,25 @@ echarts.use([
     LineChart,
     BarChart,
     CanvasRenderer,
-    UniversalTransition
-
+    UniversalTransition,
+    TitleComponent
 ]);
-const main = ref() // 使用ref创建虚拟DOM引用，使用时用main.value
+
+// Define props
+const props = defineProps({
+    stockCode: String,
+    startDate: {
+        type: String,
+        default: '2020-01-01'
+    },
+    endDate: {
+        type: String,
+        default: '2050-01-30'
+    },
+    stockTitle: String
+});
+
+const chartContainer = ref();
 const storeData = reactive([])
 const startValue = ref(0)
 const endValue = ref(100)
@@ -48,27 +62,30 @@ const stockSelectIndex = ref(0)
 let nowDataZoomStartIndex;
 let nowDataZoomEndIndex;
 const switchValue = ref(false)
-// 获取指定个股的数据
-async function getStockInfoForCondidator(stockCode, startDate) {
+
+const emit = defineEmits(['closeSkeleton', 'errorFetchingData']);
+
+
+let myChart;
+
+const getStockInfoForCondidator = async (stockCode, startDate, endDate) => {
     try {
         const response = await axios.post('api/getKlineDateFromDB', {
             code: stockCode,
             startDate: startDate,
-            endDate: '2050-01-30'
-
+            endDate: endDate
         });
         storeData.length = 0;
         storeData.push(...response.data.data);
         startValue.value = storeData.length - 160;
         endValue.value = storeData.length;
     } catch (error) {
-        console.error('Error fetching stock info for condidator:', error);
+        console.error('Error fetching stock info:', error);
+        emit('errorFetchingData', error);
     }
 }
-// 防抖设置
-const scrollWheelEvent = debounce(nextStockSelectIndex, 500)
-// 添加监听事件
-function nextStockSelectIndex(e) {
+
+const nextStockSelectIndex = (e) => {
     if (e.ctrlKey === false) {
         if (e.wheelDeltaY < 0) {
             stockSelectIndex.value++
@@ -84,28 +101,13 @@ function nextStockSelectIndex(e) {
         switchValue.value = false
     }
 }
-let myChart;
-const calculateMA = (dayCount, data) => {
-    var result = [];
-    var ret;
-    for (var i = 0, len = data.values.length; i < len; i++) {
-        if (i < dayCount) {
-            result.push('-');
-            continue;
-        }
-        var sum = 0;
-        for (var j = 0; j < dayCount; j++) {
-            sum += data.values[i - j][1];
-        }
-        ret = sum / dayCount
-        result.push(ret.toFixed(2));
-    }
-    return result;
-}
-function splitData(rawData) {
+const scrollWheelEvent = debounce(nextStockSelectIndex, 500);
+
+const splitData = (rawData) => {
     let categoryData = [];
     let values = [];
     let volumes = [];
+
     for (let i = 0; i < rawData.length; i++) {
         categoryData.push(rawData[i].splice(0, 1)[0]);
         values.push(rawData[i]);
@@ -117,12 +119,24 @@ function splitData(rawData) {
         volumes: volumes
     };
 }
-const chartOption = (data, startValue) => {
-    return {
 
+const chartOption = (data, startValue, endValue, stocktitle) => {
+    console.log('print stocktitle::::::', stocktitle);
+    return {
+        title: {
+            text: stocktitle,
+            left: 'center',
+            top: 'top',
+            textStyle: {
+                color: '#333',
+                fontSize: 18,
+                fontWeight: 'bold'
+            }
+        },
         tooltip: {
             trigger: 'axis',
             axisPointer: {
+                type: 'cross',
                 link: [
                     {
                         xAxisIndex: 'all'
@@ -204,8 +218,8 @@ const chartOption = (data, startValue) => {
         {
             left: '15%',
             right: '2%',
-            top: '80%',
-            height: '16%'
+            top: '85%',
+            height: '10%'
         }],
 
         xAxis: [
@@ -220,7 +234,7 @@ const chartOption = (data, startValue) => {
                 axisPointer: {
                     z: 100
                 },
-                show: false
+                show: true
             },
             {
                 type: 'category',
@@ -320,136 +334,174 @@ const chartOption = (data, startValue) => {
         ]
     }
 }
+
+const calculateMA = (dayCount, data) => {
+    var result = [];
+    var ret;
+    for (var i = 0, len = data.values.length; i < len; i++) {
+        if (i < dayCount) {
+            result.push('-');
+            continue;
+        }
+        var sum = 0;
+        for (var j = 0; j < dayCount; j++) {
+            sum += data.values[i - j][1];
+        }
+        ret = sum / dayCount
+        result.push(ret.toFixed(2));
+    }
+    return result;
+}
+const chartTitle = ref('')
 const chartData = ref([])
-const init = async () => {
+const initChart = async (stockCode, startDate, endDate) => {
     if (myChart != null && myChart !== "" && myChart !== undefined) {
         myChart.dispose();//销毁
     }
-    myChart = echarts.init(main.value);
-    await getStockInfoForCondidator('1.000001', '2020-01-01')
+    myChart = echarts.init(chartContainer.value);
+    await getStockInfoForCondidator(stockCode, startDate, endDate)
     chartData.value = splitData(storeData)
     startValue.value = storeData.length - 160
     nowDataZoomStartIndex = startValue.value
     endValue.value = storeData.length
-
     nowDataZoomEndIndex = endValue.value
-    myChart.setOption(chartOption(chartData.value, startValue.value, endValue.value));
-}
 
-//如果加载完毕通知父组件关闭鱼骨图
-const emit = defineEmits(['closeSkeleton']);
+    myChart.setOption(chartOption(chartData.value, startValue.value, endValue.value, props.stockTitle));
+};
+
+watch(() => [props.stockCode, props.startDate, props.endDate], async () => {
+    await initChart(props.stockCode, props.startDate, props.endDate);
+    chartTitle.value = props.stockTitle;
+}, { immediate: false });
 
 const handleResize = () => {
     if (myChart) {
         myChart.resize();
     }
 };
+window.addEventListener('resize', handleResize);
 defineExpose({ handleResize });
-onMounted(
-    async () => {
-        await init();
-        let nowDataIndex;
-        const getDataIndex = function (param) {
-            nowDataIndex = param.dataIndex;
-        }
-        const getDatazoom = function (param) {
-            // 手动移动的时候这个datazoom对象没有batch
-            if (param.batch === undefined) {
-                nowDataZoomStartIndex = param.startValue
-                nowDataZoomEndIndex = param.endValue
-                return
-            }
-            nowDataZoomStartIndex = (param.batch[0].start / 100) * (storeData.length - 1)
-            nowDataZoomEndIndex = (param.batch[0].end / 100) * (storeData.length - 1)
-        }
-        myChart.on('showTip', debounce(getDataIndex, 500))
-        myChart.on('dataZoom', debounce(getDatazoom, 500))
-        //键盘的监听事件需要单独加,37表示左移，39对应右移 38向上 40向下
-        document.onkeydown = function (e) {
-            // 向左键 --》控制左移 如果按住ctrl一次移动7格
-            if (e.keyCode === 37) {
-                // 判断是否按了ctrl键
-                nowDataIndex = e.ctrlKey === true ? nowDataIndex - 7 : nowDataIndex - 1
-                if (nowDataIndex < 0) {
-                    nowDataIndex = 0
-                }
-                // 判断是否需要平移窗口
-                if (nowDataIndex < nowDataZoomStartIndex) {
-                    nowDataZoomStartIndex = nowDataIndex
-                    nowDataZoomEndIndex = nowDataZoomStartIndex + 160
-                }
-                myChart.dispatchAction({
-                    type: 'showTip',
-                    seriesIndex: 0,
-                    dataIndex: nowDataIndex
-                })
-                myChart.dispatchAction({
-                    type: 'dataZoom',
-                    startValue: nowDataZoomStartIndex,
-                    endValue: nowDataZoomEndIndex
-                })
-            }
 
-            //向右键 --》控制右移
-            if (e.keyCode === 39) {
-                nowDataIndex = e.ctrlKey === true ? nowDataIndex + 7 : nowDataIndex + 1
-                if (nowDataIndex > storeData.length - 1) {
-                    nowDataIndex = storeData.length - 1
-                }
-                if (nowDataIndex > nowDataZoomEndIndex) {
-                    nowDataZoomEndIndex = nowDataIndex
-                    nowDataZoomStartIndex = nowDataZoomEndIndex - 160
-                }
-                myChart.dispatchAction({
-                    type: 'showTip',
-                    seriesIndex: 0,
-                    dataIndex: nowDataIndex
-                })
-                myChart.dispatchAction({
-                    type: 'dataZoom',
-                    startValue: nowDataZoomStartIndex,
-                    endValue: nowDataZoomEndIndex
-                })
-            }
-            //向上键 --》放大
-            if (e.keyCode === 38) {
-                nowDataZoomStartIndex = nowDataZoomStartIndex + 2
-                if (nowDataZoomStartIndex > nowDataIndex - 2) {
-                    nowDataZoomStartIndex = nowDataIndex - 2
-                }
-                nowDataZoomEndIndex = nowDataZoomEndIndex - 2
 
-                if (nowDataZoomEndIndex < nowDataIndex + 2) {
-                    nowDataZoomEndIndex = nowDataIndex + 2
-                }
+onMounted(async () => {
+    await initChart(props.stockCode, props.startDate, props.endDate, props.stockTitle);
+    chartTitle.value = props.stockTitle;
+    let nowDataIndex;
 
-                if (nowDataZoomEndIndex - nowDataZoomStartIndex === 4) {
-                    nowDataZoomStartIndex = nowDataIndex
-                    nowDataZoomEndIndex = nowDataIndex
-                }
-                myChart.dispatchAction({
-                    type: 'dataZoom',
-                    startValue: nowDataZoomStartIndex,
-                    endValue: nowDataZoomEndIndex
-                })
-            }
-            //向下键 --》缩小
-            if (e.keyCode === 40) {
-                nowDataZoomStartIndex = nowDataZoomStartIndex - 5
-                nowDataZoomEndIndex = nowDataZoomEndIndex + 5
-                myChart.dispatchAction({
-                    type: 'dataZoom',
-                    startValue: nowDataZoomStartIndex,
-                    endValue: nowDataZoomEndIndex
-                })
-            }
-        }
-        //随页面变化重新加载图表
-        window.addEventListener('resize', handleResize)
-        //通知父组件关闭鱼骨图
-        emit('closeSkeleton', false);
+    //鼠标在图上移动时的回调函数
+    const getDataIndex = (param) => {
+        nowDataIndex = param.dataIndex;
     }
-)
+    const getDatazoom = (param) => {
+        // 手动移动的时候这个datazoom对象没有batch
+        if (param.batch === undefined) {
+            nowDataZoomStartIndex = param.startValue
+            nowDataZoomEndIndex = param.endValue
+            return
+        }
+        nowDataZoomStartIndex = (param.batch[0].start / 100) * (storeData.length - 1)
+        nowDataZoomEndIndex = (param.batch[0].end / 100) * (storeData.length - 1)
+    }
+    myChart.on('showTip', debounce(getDataIndex, 100))
+    myChart.on('dataZoom', debounce(getDatazoom, 500))
+    //键盘的监听事件需要单独加,37表示左移，39对应右移 38向上 40向下
+    document.onkeydown = function (e) {
+        // 添加 event.preventDefault() 以防止默认行为
+        e.preventDefault();
+
+        // 向左键 --》控制左移 如果按住ctrl一次移动7格
+        if (e.keyCode === 37) {
+            // 判断是否按了ctrl键
+            nowDataIndex = e.ctrlKey === true ? nowDataIndex - 7 : nowDataIndex - 1;
+            if (nowDataIndex < 0) {
+                nowDataIndex = 0;
+            }
+            // 判断是否需要平移窗口
+            if (nowDataIndex < nowDataZoomStartIndex) {
+                nowDataZoomStartIndex = nowDataIndex;
+                nowDataZoomEndIndex = nowDataZoomStartIndex + 160;
+            }
+            myChart.dispatchAction({
+                type: 'showTip',
+                seriesIndex: 0,
+                dataIndex: nowDataIndex
+            });
+            myChart.dispatchAction({
+                type: 'dataZoom',
+                startValue: nowDataZoomStartIndex,
+                endValue: nowDataZoomEndIndex
+            });
+            // 阻止事件冒泡
+            e.stopPropagation();
+        }
+
+        // 向右键 --》控制右移
+        if (e.keyCode === 39) {
+            nowDataIndex = e.ctrlKey === true ? nowDataIndex + 7 : nowDataIndex + 1;
+            if (nowDataIndex > storeData.length - 1) {
+                nowDataIndex = storeData.length - 1;
+            }
+            if (nowDataIndex > nowDataZoomEndIndex) {
+                nowDataZoomEndIndex = nowDataIndex;
+                nowDataZoomStartIndex = nowDataZoomEndIndex - 160;
+            }
+            myChart.dispatchAction({
+                type: 'showTip',
+                seriesIndex: 0,
+                dataIndex: nowDataIndex
+            });
+            myChart.dispatchAction({
+                type: 'dataZoom',
+                startValue: nowDataZoomStartIndex,
+                endValue: nowDataZoomEndIndex
+            });
+            // 阻止事件冒泡
+            e.stopPropagation();
+        }
+
+        // 向上键 --》放大
+        if (e.keyCode === 38) {
+            nowDataZoomStartIndex = nowDataZoomStartIndex + 2;
+            if (nowDataZoomStartIndex > nowDataIndex - 2) {
+                nowDataZoomStartIndex = nowDataIndex - 2;
+            }
+            nowDataZoomEndIndex = nowDataZoomEndIndex - 2;
+
+            if (nowDataZoomEndIndex < nowDataIndex + 2) {
+                nowDataZoomEndIndex = nowDataIndex + 2;
+            }
+
+            if (nowDataZoomEndIndex - nowDataZoomStartIndex === 4) {
+                nowDataZoomStartIndex = nowDataIndex;
+                nowDataZoomEndIndex = nowDataIndex;
+            }
+            myChart.dispatchAction({
+                type: 'dataZoom',
+                startValue: nowDataZoomStartIndex,
+                endValue: nowDataZoomEndIndex
+            });
+            // 阻止事件冒泡
+            e.stopPropagation();
+        }
+
+        // 向下键 --》缩小
+        if (e.keyCode === 40) {
+            nowDataZoomStartIndex = nowDataZoomStartIndex - 5;
+            nowDataZoomEndIndex = nowDataZoomEndIndex + 5;
+            myChart.dispatchAction({
+                type: 'dataZoom',
+                startValue: nowDataZoomStartIndex,
+                endValue: nowDataZoomEndIndex
+            });
+            // 阻止事件冒泡
+            e.stopPropagation();
+        }
+    };
+    //随页面变化重新加载图表
+    window.addEventListener('resize', handleResize)
+    emit('closeSkeleton', false);
+}
+);
 
 </script>
 
