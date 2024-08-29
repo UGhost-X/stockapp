@@ -49,6 +49,7 @@ import KlineChart from '@/components/KlineChart.vue';
 import CommonTable from '@/components/CommonTable.vue';
 import axios from 'axios';
 import dayjs, { Dayjs } from 'dayjs';
+import Icon from '@ant-design/icons-vue';
 
 const loadingMainPannel = ref<boolean>(true);
 const loadingStockWarning = ref<boolean>(true);
@@ -87,7 +88,7 @@ const getStockWarningData = async (warningDate: string, warningCreteria: string)
       warningDate: dateToUse.format('YYYY-MM-DD'),
       warningCreteria: warningCreteria,
     });
-    if (response.data.data && response.data.data.length > 0) {
+    if (response.data.data && response.data.data.totalCount > 0) {
       return response.data.data;
     } else {
       // 如果数据为空，重新请求前一天的数据
@@ -96,9 +97,6 @@ const getStockWarningData = async (warningDate: string, warningCreteria: string)
         warningDate: dateToUse.format('YYYY-MM-DD'),
         warningCreteria: warningCreteria,
       });
-      console.log('print warningCriteria::::::', dateToUse.format('YYYY-MM-DD'));
-      console.log('print warningCriteria::::::', warningCreteria);
-      console.log('print retryResponse.data.data::::::', retryResponse.data.data);
       return retryResponse.data.data || [];
     }
   } catch (error) {
@@ -114,14 +112,14 @@ const getStockHistoryMinWarningData = async (warningDate: string): Promise<any[]
     const response = await axios.post('/api/getStockWaringhistoryMinData', {
       warningDate: dateToUse.format('YYYY-MM-DD'),
     });
-    if (response.data.data && response.data.data.length > 0) {
+    if (response.data.data && response.data.data.totalCount > 0) {
       return response.data.data;
     } else {
       // 如果数据为空，重新请求前一天的数据
       dateToUse = dateToUse.subtract(1, 'day');
       const retryResponse = await axios.post('/api/getStockWaringhistoryMinData', {
         warningDate: dateToUse.format('YYYY-MM-DD'),
-      });      
+      });
       return retryResponse.data.data || [];
     }
   } catch (error) {

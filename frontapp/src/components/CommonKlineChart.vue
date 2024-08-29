@@ -404,9 +404,6 @@ onMounted(async () => {
     myChart.on('dataZoom', debounce(getDatazoom, 500))
     //键盘的监听事件需要单独加,37表示左移，39对应右移 38向上 40向下
     document.onkeydown = function (e) {
-        // 添加 event.preventDefault() 以防止默认行为
-        e.preventDefault();
-
         // 向左键 --》控制左移 如果按住ctrl一次移动7格
         if (e.keyCode === 37) {
             // 判断是否按了ctrl键

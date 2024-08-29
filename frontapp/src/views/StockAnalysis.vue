@@ -1,5 +1,6 @@
 <template>
   <a-layout class="layout">
+
     <a-layout-content style="margin: 10px 10px 3px 10px">
       <a-row>
         <a-col :span="6">
@@ -15,9 +16,11 @@
           </div>
         </a-col>
         <a-col :span="6" style="display: flex;justify-content: flex-end;">
-          <div class="functionalarea">
-            <a-range-picker :presets="rangePresets" @change="onRangeChange" style="width: 20vw; max-width: 300px;" />
-          </div>
+          <a-config-provider :locale="zhCN">
+            <div class="functionalarea">
+              <a-range-picker :presets="rangePresets" @change="onRangeChange" style="width: 20vw; max-width: 300px;" />
+            </div>
+          </a-config-provider>
         </a-col>
       </a-row>
       <a-row>
@@ -29,6 +32,33 @@
             <a-modal v-model:open="addCandidatorModal" title="是否加入后选股" centered @ok="handleModalOkEven">
               <span> 是否加入后续股 </span>
             </a-modal>
+          </div>
+        </a-col>
+      </a-row>
+      <a-row>
+        <a-col :span="24">
+          <div class="comment" style="margin-top: 20px">
+            <div class="comment-title">评论区</div>
+            <a-list v-if="comments.length" :data-source="comments">
+              <template #renderItem="{ item }">
+                <a-list-item class="comment-content">
+                  <a-comment :author="item.author" :avatar="item.avatar" :content="item.content"
+                    :datetime="item.datetime" />
+                </a-list-item>
+              </template>
+            </a-list>
+            <a-comment>
+              <template #content>
+                <a-form-item>
+                  <a-textarea v-model:value="commentValue" :rows="4" />
+                </a-form-item>
+                <a-form-item>
+                  <a-button html-type="submit" :loading="submitting" type="primary" @click="handleSubmit">
+                    发表
+                  </a-button>
+                </a-form-item>
+              </template>
+            </a-comment>
           </div>
         </a-col>
       </a-row>
@@ -67,6 +97,7 @@
       </a-modal>
     </a-drawer>
   </a-layout>
+
 </template>
 <script setup lang="ts">
 import { RadarChartOutlined } from "@ant-design/icons-vue";
@@ -75,7 +106,16 @@ import CommonKlineChart from "@/components/CommonKlineChart.vue";
 import { ref, Ref, watch, nextTick, onMounted, onBeforeUnmount } from "vue";
 import axios from "axios";
 import dayjs, { Dayjs } from 'dayjs';
+import relativeTime from 'dayjs/plugin/relativeTime';
+dayjs.extend(relativeTime);
 import { message } from 'ant-design-vue';
+import zhCN from 'ant-design-vue/es/locale/zh_CN';
+import 'dayjs/locale/zh-cn';
+
+// 设置 dayjs 的全局语言为中文
+dayjs.locale('zh-cn');
+
+
 const checked = ref<boolean>(false);
 const opendrawer = ref<boolean>(false);
 const stockTitle = ref('');
@@ -157,12 +197,24 @@ const getLatestTradeDate = async () => {
   }
 }
 
-//日期选择器区
+// 定义预设日期范围
 const rangePresets = ref([
-  { label: 'Last 7 Days', value: [dayjs().add(-7, 'd'), dayjs()] },
-  { label: 'Last 14 Days', value: [dayjs().add(-14, 'd'), dayjs()] },
-  { label: 'Last 30 Days', value: [dayjs().add(-30, 'd'), dayjs()] },
-  { label: 'Last 90 Days', value: [dayjs().add(-90, 'd'), dayjs()] },
+  {
+    label: '最近三天',
+    value: [dayjs().subtract(3, 'day'), dayjs()],
+  },
+  {
+    label: '最近一周',
+    value: [dayjs().subtract(1, 'week'), dayjs()],
+  },
+  {
+    label: '最近两周',
+    value: [dayjs().subtract(2, 'week'), dayjs()],
+  },
+  {
+    label: '最近一个月',
+    value: [dayjs().subtract(1, 'month'), dayjs()],
+  },
 ]);
 type RangeValue = [Dayjs, Dayjs];
 const onRangeChange = async (dates: RangeValue, dateStrings: string[]) => {
@@ -335,7 +387,7 @@ const nextOption = () => {
   } else {
     endDate.value = '2050-12-31'
   }
-  
+
 }
 
 watch(loadKLine, async () => {
@@ -366,6 +418,31 @@ const handleModalOkEven = () => {
   tabledata.value.push(newData);
 }
 
+//评论区
+type Comment = Record<string, string>;
+
+const comments = ref<Comment[]>([]);
+const submitting = ref<boolean>(false);
+const commentValue = ref<string>('');
+const handleSubmit = () => {
+  if (!commentValue.value) {
+    return;
+  }
+
+  submitting.value = true;
+
+  submitting.value = false;
+  comments.value = [
+    {
+      author: 'UGhost',
+      content: commentValue.value,
+      datetime: dayjs().fromNow(),
+    },
+    ...comments.value,
+  ];
+  commentValue.value = '';
+
+};
 
 onMounted(async () => {
   let latestTradeDate = await getLatestTradeDate();
@@ -412,6 +489,34 @@ onBeforeUnmount(() => {
   border-radius: 0 0 10px 10px;
   background: #fff;
   padding: 12px;
+}
+
+.comment {
+  border-radius: 10px 10px 10px 10px;
+  background: #fff;
+  padding: 12px;
+}
+
+.comment-title {
+  font-size: 24px;
+  height: 48px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 40px 0 40px 0;
+}
+
+.comment-content {
+  background-color: #d5ebe1;
+  border-radius: 20px;
+}
+
+:deep(.ant-comment-content-author) {
+  font-size: 20px !important;
+}
+
+:deep(.ant-comment-content-detail) {
+  font-size: 18px !important;
 }
 
 /* enter 事件需要提供一个聚焦，聚焦产生的黑框通过这个去除 */
