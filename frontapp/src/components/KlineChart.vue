@@ -18,7 +18,8 @@ import {
     VisualMapComponent,
     LegendComponent,
     BrushComponent,
-    DataZoomComponent
+    DataZoomComponent,
+    TitleComponent
 } from 'echarts/components';
 import { CandlestickChart, LineChart, BarChart } from 'echarts/charts';
 import { UniversalTransition } from 'echarts/features';
@@ -37,8 +38,8 @@ echarts.use([
     LineChart,
     BarChart,
     CanvasRenderer,
-    UniversalTransition
-
+    UniversalTransition,
+    TitleComponent
 ]);
 const main = ref() // 使用ref创建虚拟DOM引用，使用时用main.value
 const storeData = reactive([])
@@ -117,9 +118,19 @@ function splitData(rawData) {
         volumes: volumes
     };
 }
-const chartOption = (data, startValue) => {
+const stockTitle = ref('');
+const chartOption = (data, startValue,endValue,stockTitle) => {
     return {
-
+        title: {
+            text: stockTitle,
+            left: 'center',
+            top: 'top',
+            textStyle: {
+                color: '#333',
+                fontSize: 18,
+                fontWeight: 'bold'
+            }
+        },
         tooltip: {
             trigger: 'axis',
             axisPointer: {
@@ -327,13 +338,13 @@ const init = async () => {
     }
     myChart = echarts.init(main.value);
     await getStockInfoForCondidator('1.000001', '2020-01-01')
-    chartData.value = splitData(storeData)
+    chartData.value = splitData(storeData);
+    stockTitle.value ="上证指数  " + chartData.value.categoryData[chartData.value.categoryData.length-1];
     startValue.value = storeData.length - 160
     nowDataZoomStartIndex = startValue.value
     endValue.value = storeData.length
-
     nowDataZoomEndIndex = endValue.value
-    myChart.setOption(chartOption(chartData.value, startValue.value, endValue.value));
+    myChart.setOption(chartOption(chartData.value, startValue.value, endValue.value,stockTitle.value));
 }
 
 //如果加载完毕通知父组件关闭鱼骨图

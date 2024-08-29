@@ -121,7 +121,6 @@ const splitData = (rawData) => {
 }
 
 const chartOption = (data, startValue, endValue, stocktitle) => {
-    console.log('print stocktitle::::::', stocktitle);
     return {
         title: {
             text: stocktitle,
@@ -361,11 +360,10 @@ const initChart = async (stockCode, startDate, endDate) => {
     myChart = echarts.init(chartContainer.value);
     await getStockInfoForCondidator(stockCode, startDate, endDate)
     chartData.value = splitData(storeData)
-    startValue.value = storeData.length - 160
+    startValue.value = storeData.length - 200
     nowDataZoomStartIndex = startValue.value
     endValue.value = storeData.length
     nowDataZoomEndIndex = endValue.value
-
     myChart.setOption(chartOption(chartData.value, startValue.value, endValue.value, props.stockTitle));
 };
 

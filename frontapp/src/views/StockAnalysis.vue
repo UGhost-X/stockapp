@@ -4,27 +4,31 @@
       <a-row>
         <a-col :span="6">
           <div class="functionalarea" style="padding-top: 5px">
-            <a-switch v-model:checked="checked" />
+            <a-switch v-model:checked="checked" checked-children="全部展示" un-checked-children="部分展示"
+              @change="switchChangeEvent" />
           </div>
         </a-col>
         <a-col :span="12">
           <div class="functionalarea">
-            <a-select v-model:value="value" style="width: 100%" :placeholder="placeholder" :options="options"
-              :show-arrow="false" @change="titleChange"></a-select>
+            <a-select v-model:value="selectedValue" style="width: 100%" :options="options" :show-arrow="false"
+              @change="titleChange"></a-select>
           </div>
         </a-col>
         <a-col :span="6" style="display: flex;justify-content: flex-end;">
-          <div class="functionalarea" >
-            <a-range-picker :presets="rangePresets" @change="onRangeChange"  style="width: 15vw;"/>
+          <div class="functionalarea">
+            <a-range-picker :presets="rangePresets" @change="onRangeChange" style="width: 20vw; max-width: 300px;" />
           </div>
         </a-col>
       </a-row>
       <a-row>
-        <a-col :span="24">
+        <a-col :span="24" @keydown.enter="nextOption" tabindex="0">
           <div class="cardscontent">
             <a-skeleton v-show="loadKLine" active :paragraph="{ rows: 15 }" />
-            <CommonKlineChart v-if="!loadKLine" :stockCode="stockCode" :stockTitle="stockTitle" @closeSkeleton="handleEmitEven"
-              ref="commonKlineChart" />
+            <CommonKlineChart v-if="!loadKLine" :stockCode="stockCode" :stockTitle="stockTitle" :endDate="endDate"
+              @closeSkeleton="handleEmitEven" @contextmenu="showModal" ref="commonKlineChart" />
+            <a-modal v-model:open="addCandidatorModal" title="是否加入后选股" centered @ok="handleModalOkEven">
+              <span> 是否加入后续股 </span>
+            </a-modal>
           </div>
         </a-col>
       </a-row>
@@ -36,7 +40,7 @@
     </a-float-button>
     <a-drawer title="候选股" :width="520" :open="opendrawer" :body-style="{ paddingBottom: '80px' }"
       :footer-style="{ textAlign: 'right' }" @close="closeDrawer">
-      <a-table :columns="columns" :data-source="tabledata">
+      <a-table :columns="columns" :data-source="tabledata" :customRow="handleClickRow">
         <template #emptyText>
           <a-empty description="暂无数据" />
         </template>
@@ -51,6 +55,16 @@
           </template>
         </template>
       </a-table>
+      <div style="position: absolute; bottom: 40px;">
+        <a-space>
+          <a-button type="primary" @click="openCandidatorModal" :loading='candidatorButtonloading'>候选确认</a-button>
+          <a-button type="primary" @click="saveData">候选暂存</a-button>
+          <a-button danger @click="clearTable">候选清空</a-button>
+        </a-space>
+      </div>
+      <a-modal v-model:open="setCandidatorModal" title="候选股确认" centered @ok="closeCandidatorModal">
+        <p>确认保存后选股数据？</p>
+      </a-modal>
     </a-drawer>
   </a-layout>
 </template>
@@ -58,39 +72,80 @@
 import { RadarChartOutlined } from "@ant-design/icons-vue";
 import DeleteIcon from "@/components/DeleteIcon.vue";
 import CommonKlineChart from "@/components/CommonKlineChart.vue";
-import { ref, Ref, watch, nextTick, onMounted} from "vue";
+import { ref, Ref, watch, nextTick, onMounted, onBeforeUnmount } from "vue";
 import axios from "axios";
 import dayjs, { Dayjs } from 'dayjs';
-
+import { message } from 'ant-design-vue';
 const checked = ref<boolean>(false);
 const opendrawer = ref<boolean>(false);
 const stockTitle = ref('');
+const endDate = ref('2050-12-31')
+//switch按钮区
+const switchChangeEvent = (e: boolean) => {
+  if (!e) {
+    endDate.value = stockTitle.value.split(' ')[2]
+  } else {
+    endDate.value = '2050-12-31'
+  }
+
+}
+const switchHotkey = (event: KeyboardEvent) => {
+  if (event.ctrlKey && event.altKey && event.key === '%' && event.shiftKey) {
+    checked.value = !checked.value;
+    if (!checked.value) {
+      endDate.value = stockTitle.value.split(' ')[2]
+    } else {
+      endDate.value = '2050-12-31'
+    }
+  }
+};
 // 标题选项控制
 const titleChange = (value: string) => {
   stockCode.value = value.split(' ')[0];
   stockTitle.value = value;
+  if (!checked.value) {
+    endDate.value = stockTitle.value.split(' ')[2]
+  } else {
+    endDate.value = '2050-12-31'
+  }
 };
-const value = ref([]);
+const selectedValue = ref('');
 
-const options = ref([]);
-let placeholder = ref('');
-async function fetchOptions(startDate: string, endDate: string) {
+const options = ref<Option[]>([]);
+interface Option {
+  value: string;
+}
+
+
+const fetchOptions = async (startDate: string, endDate: string) => {
   try {
     const response = await axios.post('/api/getStockAnalyseDate', {
       startDate: startDate,
       endDate: endDate
     });
-    return response.data.data.rows.map((cell: any[]) => ({
+    const rows = response.data.data.rows;
+
+    // 对结果进行排序
+    const sortedRows = rows.sort((a: any, b: any) => {
+      // 首先比较 cell[2] 的日期字符串
+      if (a[2] !== b[2]) {
+        return a[2].localeCompare(b[2]);
+      }
+
+      // 如果日期相同，则比较 cell[0]
+      const startsWith0Or6 = (str: string) => str.startsWith('0') || str.startsWith('6');
+      if (startsWith0Or6(a[0])) return -1; // 0 或 6 开头的排在前面
+      if (startsWith0Or6(b[0])) return 1;
+      return a[0].localeCompare(b[0]); // 其他情况按字母顺序排列
+    });
+
+    return sortedRows.map((cell: any[]) => ({
       value: `${cell[0]} ${cell[1]} ${cell[2]}`
     }));
   } catch (error) {
-    // 处理错误
     console.error('Failed to fetch data:', error);
-    // throw error;
   }
-}
-
-
+};
 
 // 获取最新交易日
 const getLatestTradeDate = async () => {
@@ -113,13 +168,27 @@ type RangeValue = [Dayjs, Dayjs];
 const onRangeChange = async (dates: RangeValue, dateStrings: string[]) => {
   if (dates) {
     options.value = await fetchOptions(dateStrings[0], dateStrings[1]);
-    placeholder.value = options.value[0].value;
+    if (!options || options.value === undefined) {
+      message.error("日期切换失败，没有获取到 options")
+      return
+    }
+    selectedValue.value = options.value[0].value;
+    if (selectedValue.value) {
+      const parts = selectedValue.value.split(' ');
+      stockCode.value = parts[0];
+      stockTitle.value = selectedValue.value;
+    }
+
+    if (!checked.value) {
+      endDate.value = stockTitle.value.split(' ')[2]
+    } else {
+      endDate.value = '2050-12-31'
+    }
+
   } else {
     console.log('Clear');
   }
 };
-
-
 
 // 候选股记录展示控制
 const closeDrawer = () => {
@@ -148,6 +217,14 @@ const columns = [
     align: "center",
   },
   {
+    title: "选择日期",
+    dataIndex: "date",
+    key: "date",
+    width: 120,
+    ellipsis: true,
+    align: "center",
+  },
+  {
     title: "操作",
     dataIndex: "operation",
     key: "operation",
@@ -156,29 +233,87 @@ const columns = [
   },
 ];
 
+const handleClickRow = (record: any) => {
+  return {
+    onDblclick: () => {
+      selectedValue.value = record.key;
+      const parts = selectedValue.value.split(' ');
+      stockCode.value = parts[0];
+      stockTitle.value = selectedValue.value;
+      if (!checked.value) {
+        endDate.value = stockTitle.value.split(' ')[2]
+      } else {
+        endDate.value = '2050-12-31'
+      }
+    }
+
+  }
+}
+
 interface DataItem {
   key: string;
   code: string;
   name: string;
+  date: string;
 }
+const candidatorButtonloading = ref<boolean>(false);
+const saveData = () => {
+  localStorage.setItem('tabledata', JSON.stringify(tabledata.value));
+}
+const loadData = () => {
+  const savedData = localStorage.getItem('tabledata');
+  if (savedData) {
+    tabledata.value = JSON.parse(savedData);
+  }
+};
+const clearTable = () => {
+  tabledata.value = [];
+  localStorage.removeItem('tabledata');
+};
+const tabledata: Ref<DataItem[]> = ref([]);
 
-const tabledata: Ref<DataItem[]> = ref([
-  {
-    key: "1",
-    code: "6020000",
-    name: "xxxxxxx",
-  },
-]);
 
+
+//更新股票标记数据
+const updateStockAnalyseIsMarkStatus = async (code: string, analyseDate: string, analyseMethod: string, isMark: number) => {
+  try {
+    const response = await axios.post('/api/updateStockAnalyseIsMarkStatus', {
+      code: code,
+      analyseDate: analyseDate,
+      analyseMethod: analyseMethod,
+      isMark: isMark,
+    });
+    return response.status;
+  } catch (error) {
+    console.error('updateStockAnalyseIsMarkStatus Failed:', error);
+    return { status: 500 };
+  }
+}
 const onDeleteRecord = (key: string) => {
   tabledata.value = tabledata.value.filter((item) => item.key !== key);
 };
+const setCandidatorModal = ref<boolean>(false)
+const openCandidatorModal = () => {
+  setCandidatorModal.value = true;
+  candidatorButtonloading.value = true;
+}
 
-// const showTableEmpty = {
-//   emptyText:Empty.PRESENTED_IMAGE_DEFAULT
-// }
-
-
+const closeCandidatorModal = async () => {
+  setCandidatorModal.value = false;
+  for (const item of tabledata.value) {
+    const { code, date } = item;
+    const analyseMethod = 'volumnEnerge';
+    const isMark = 1;
+    const status = await updateStockAnalyseIsMarkStatus(code, date, analyseMethod, isMark);
+    if (status !== 200) {
+      candidatorButtonloading.value = false;
+      console.error(`Failed to update item with code ${code}`);
+    } else {
+      candidatorButtonloading.value = false;
+      console.log(`Successfully updated item with code ${code}`);
+    }
+  }
+}
 //K线区
 const stockCode = ref('')
 const commonKlineChart = ref<InstanceType<typeof CommonKlineChart> | null>(null);
@@ -186,22 +321,89 @@ const loadKLine = ref<boolean>(true)
 const handleEmitEven = () => {
   loadKLine.value = false;
 }
+const nextOption = () => {
+  const currentIndex = options.value.findIndex(option => option.value === selectedValue.value);
+  if (currentIndex === -1) return; // 如果当前值不在选项中，则不做任何事情
+  const nextIndex = (currentIndex + 1) % options.value.length;
+  selectedValue.value = options.value[nextIndex].value;
+  const parts = selectedValue.value.split(' ');
+  stockCode.value = parts[0];
+  stockTitle.value = selectedValue.value;
+  checked.value = false
+  if (!checked.value) {
+    endDate.value = stockTitle.value.split(' ')[2]
+  } else {
+    endDate.value = '2050-12-31'
+  }
+  
+}
+
 watch(loadKLine, async () => {
   await nextTick();
   commonKlineChart.value.handleResize();
 });
 
 
+const addCandidatorModal = ref<boolean>(false);
+const showModal = (e: MouseEvent) => {
+  e.preventDefault();
+  addCandidatorModal.value = true;
+
+}
+const handleModalOkEven = () => {
+  addCandidatorModal.value = false;
+  const newData: DataItem = {
+    key: stockTitle.value,
+    code: stockCode.value,
+    name: stockTitle.value.split(' ')[1],
+    date: stockTitle.value.split(' ')[2],
+  };
+  const isDuplicate = tabledata.value.some(item => item.key === newData.key);
+  if (isDuplicate) {
+    console.warn(`Duplicate key found: ${newData.key}`);
+    return;
+  }
+  tabledata.value.push(newData);
+}
+
+
 onMounted(async () => {
-  const latestTradeDate = await getLatestTradeDate(); 
-  options.value = await fetchOptions(latestTradeDate,latestTradeDate);
-  placeholder.value = options.value[0].value;
-  stockCode.value = placeholder.value.split(' ')[0]
-  stockTitle.value = placeholder.value
+  let latestTradeDate = await getLatestTradeDate();
+
+  while (true) {
+    const fetchedOptions = await fetchOptions(latestTradeDate, latestTradeDate);
+
+    if (fetchedOptions && fetchedOptions.length > 0) {
+      options.value = fetchedOptions;
+      selectedValue.value = options.value[0]?.value;
+
+      if (selectedValue.value) {
+        const parts = selectedValue.value.split(' ');
+        stockCode.value = parts[0];
+        stockTitle.value = selectedValue.value;
+      }
+      break;
+    } else {
+      // 如果没有获取到数据，则将日期减去一天
+      latestTradeDate = dayjs(latestTradeDate).subtract(1, 'day').format('YYYY-MM-DD');
+      // 等待一段时间后重新尝试获取数据
+      await new Promise(resolve => setTimeout(resolve, 1000)); // 等待1秒
+    }
+  }
   loadKLine.value = false;
-})
+  loadData();
+  window.addEventListener('keydown', switchHotkey);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', switchHotkey);
+});
 </script>
 <style scoped>
+.layout {
+  overflow: hidden;
+}
+
 .functionalarea {
   margin-bottom: 10px;
 }
@@ -210,5 +412,10 @@ onMounted(async () => {
   border-radius: 0 0 10px 10px;
   background: #fff;
   padding: 12px;
+}
+
+/* enter 事件需要提供一个聚焦，聚焦产生的黑框通过这个去除 */
+.ant-col:focus {
+  outline: none;
 }
 </style>

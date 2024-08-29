@@ -11,7 +11,8 @@
         <a-col :span="12">
           <div class="cardscontent">
             <a-skeleton v-show="loadingStockWarning" active :paragraph="{ rows: 5 }" />
-            <CommonTable v-show="!loadingStockWarning" :columns="columns" :data="tabledata" :pagination="pagination" :tableTitle="tableTitle">
+            <CommonTable v-show="!loadingStockWarning" :columns="columns" :data="tabledata" :pagination="pagination"
+              :tableTitle="tableTitle">
               <template #bodyCell="{ column, record }">
                 <template v-if="column.dataIndex === 'operation'">
                   <a-popconfirm title="确认删除" ok-text="是" cancel-text="否" @confirm="onDeleteRecord(record.key)">
@@ -25,7 +26,8 @@
         <a-col :span="12">
           <div class="cardscontent">
             <a-skeleton v-show="loadingStockHistoryMInWarning" active :paragraph="{ rows: 5 }" />
-            <CommonTable v-show="!loadingStockHistoryMInWarning" :columns="columnsHist" :data="tabledataHist" :pagination="pagination" :tableTitle="tableTitleHist">
+            <CommonTable v-show="!loadingStockHistoryMInWarning" :columns="columnsHist" :data="tabledataHist"
+              :pagination="pagination" :tableTitle="tableTitleHist">
               <template #bodyCell="{ column, record }">
                 <template v-if="column.dataIndex === 'operation'">
                   <a-popconfirm title="确认删除" ok-text="是" cancel-text="否" @confirm="onDeleteRecord(record.key)">
@@ -46,6 +48,7 @@ import { ref, watch, nextTick, onMounted, } from 'vue';
 import KlineChart from '@/components/KlineChart.vue';
 import CommonTable from '@/components/CommonTable.vue';
 import axios from 'axios';
+import dayjs, { Dayjs } from 'dayjs';
 
 const loadingMainPannel = ref<boolean>(true);
 const loadingStockWarning = ref<boolean>(true);
@@ -77,27 +80,53 @@ const pagination = ref({
   total: totalCount.value,
 });
 // 获取5日预警板数据的异步函数
-const getStockWarningData = async (warningDate: String, warningCreteria: String) => {
+const getStockWarningData = async (warningDate: string, warningCreteria: string): Promise<any[]> => {
+  let dateToUse: Dayjs = dayjs(warningDate);
   try {
     const response = await axios.post('/api/getStockWaringData', {
-      warningDate: warningDate,
+      warningDate: dateToUse.format('YYYY-MM-DD'),
       warningCreteria: warningCreteria,
     });
-    return response.data.data;
+    if (response.data.data && response.data.data.length > 0) {
+      return response.data.data;
+    } else {
+      // 如果数据为空，重新请求前一天的数据
+      dateToUse = dateToUse.subtract(1, 'day');
+      const retryResponse = await axios.post('/api/getStockWaringData', {
+        warningDate: dateToUse.format('YYYY-MM-DD'),
+        warningCreteria: warningCreteria,
+      });
+      console.log('print warningCriteria::::::', dateToUse.format('YYYY-MM-DD'));
+      console.log('print warningCriteria::::::', warningCreteria);
+      console.log('print retryResponse.data.data::::::', retryResponse.data.data);
+      return retryResponse.data.data || [];
+    }
   } catch (error) {
     console.error('getStockWarningData Failed:', error);
+    throw error; // 抛出错误以便调用者可以处理或捕获
   }
 };
 
 // 获取历史最低预警板数据的异步函数
-const getStockHistoryMinWarningData = async (warningDate: String) => {
+const getStockHistoryMinWarningData = async (warningDate: string): Promise<any[]> => {
+  let dateToUse: Dayjs = dayjs(warningDate);
   try {
     const response = await axios.post('/api/getStockWaringhistoryMinData', {
-      warningDate: warningDate,
+      warningDate: dateToUse.format('YYYY-MM-DD'),
     });
-    return response.data.data;
+    if (response.data.data && response.data.data.length > 0) {
+      return response.data.data;
+    } else {
+      // 如果数据为空，重新请求前一天的数据
+      dateToUse = dateToUse.subtract(1, 'day');
+      const retryResponse = await axios.post('/api/getStockWaringhistoryMinData', {
+        warningDate: dateToUse.format('YYYY-MM-DD'),
+      });      
+      return retryResponse.data.data || [];
+    }
   } catch (error) {
     console.error('getStockHistoryMinWarningData Failed:', error);
+    throw error; // 抛出错误以便调用者可以处理或捕获
   }
 };
 
@@ -186,6 +215,4 @@ onMounted(loadHistoryMinData);
   padding: 12px;
   overflow: hidden;
 }
-
-
 </style>
