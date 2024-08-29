@@ -12,7 +12,7 @@
         <a-col :span="12">
           <div class="functionalarea">
             <a-select v-model:value="selectedValue" style="width: 100%" :options="options" :show-arrow="false"
-              @change="titleChange"></a-select>
+              :filterOption="filterOption" showSearch @change="titleChange"></a-select>
           </div>
         </a-col>
         <a-col :span="6" style="display: flex;justify-content: flex-end;">
@@ -185,6 +185,10 @@ const fetchOptions = async (startDate: string, endDate: string) => {
   } catch (error) {
     console.error('Failed to fetch data:', error);
   }
+};
+
+const filterOption = (input: string, option: { value: string; label: string }) => {
+  return option.value.toLowerCase().includes(input.toLowerCase());
 };
 
 // 获取最新交易日
