@@ -370,7 +370,7 @@ exports.setAnalyseData = async (data) => {
   const query = util.promisify(connection.query).bind(connection);
   const end = util.promisify(connection.end).bind(connection);
   const insertQuery = `
-   INSERT ignore INTO stockdata.stock_analyse_collection (stock_code, analyse_date, one_month_change, one_month_change_date,analyse_day_price, purchase_price,anylse_method)
+   INSERT ignore INTO stockdata.stock_analyse_collection (stock_code, analyse_date, one_month_change, one_month_change_date,analyse_day_price, purchase_price,anylse_method,is_mark)
         VALUES ?
   `;
   try {
@@ -485,7 +485,7 @@ exports.updateStockAnalyseOneMonth = async (latestDate) => {
 
 
 //更新分析结果中的股票是否被选中
-exports.updateStockAnalyseIsMark = async (code, analyseDate, analyseMethed, isMark) => {
+exports.updateStockAnalyseIsMark = async (code, analyseDate, analyseMethod, isMark) => {
   const connection = mysql.createConnection(dbConfig);
   const query = util.promisify(connection.query).bind(connection);
   const end = util.promisify(connection.end).bind(connection);
@@ -494,7 +494,7 @@ exports.updateStockAnalyseIsMark = async (code, analyseDate, analyseMethed, isMa
     analyse_date = ? and stock_code = ? and anylse_method = ?
   `;
   try {
-    await query(updateQuery, [isMark, analyseDate, code, analyseMethed]);
+    await query(updateQuery, [isMark, analyseDate, code, analyseMethod]);
   } catch (error) {
     logger.error('updateStockAnalyseIsMark failed:::' + error.message);
     throw error;

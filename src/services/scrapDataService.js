@@ -162,9 +162,9 @@ exports.getLatestMonthAnalyseSituationService = async (latestDate) => {
 }
 
 //更新股票的标记状态，如果为1表示被选中
-exports.updateStockAnalyseIsMarkService = async (code,analyseDate,analyseMethed,isMark) =>{
+exports.updateStockAnalyseIsMarkService = async (code,analyseDate,analyseMethod,isMark) =>{
   try {
-    return await stockModel.updateStockAnalyseIsMark(code,analyseDate,analyseMethed,isMark);
+    return await stockModel.updateStockAnalyseIsMark(code,analyseDate,analyseMethod,isMark);
   } catch (error) {
     throw new Error(
       "Error Excuting updateStockAnalyseIsMarkService::" + error.message

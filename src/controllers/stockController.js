@@ -173,9 +173,9 @@ exports.getStockAnalyseDate = async (req, res) => {
 
 //更新股票分析数据是否被标记
 exports.updateStockAnalyseIsMarkStatus = async (req, res) => {
-  const { code, analyseDate, analyseMethed, isMark } = req.body;
+  const { code, analyseDate, analyseMethod, isMark } = req.body;
   try {
-    await stockService.getKlineDataService(code, analyseDate, analyseMethed, isMark);
+    await stockService.updateStockAnalyseIsMarkService(code, analyseDate, analyseMethod, isMark);
     res.status(200).json({
       message: "标记更新成功",
     });

@@ -130,7 +130,7 @@ exports.volumeEnergyService = async (dataGrouped, delay) => {
                 const deadline = moment(tradeDate[delay - 24 < 0 ? 0 : delay - 24]).format('YYYY-MM-DD');
                 const analyseDatePrice = closePrice[0];
                 const purchasePrice = (closePrice[0] + openPrice[0]) / 2;
-                seedStock.push([name, analyseDate, oneMonthChange, deadline, analyseDatePrice, purchasePrice, 'volumnEnerge']);
+                seedStock.push([name, analyseDate, oneMonthChange, deadline, analyseDatePrice, purchasePrice, 'volumnEnerge',0]);
             } catch (error) {
                 logger.info(error.message);
                 continue;
