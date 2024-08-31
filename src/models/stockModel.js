@@ -86,22 +86,29 @@ exports.setAllStockBasicInfo = async () => {
 };
 
 //从数据库获取股票基本信息
-exports.getAllStockBasicInfo = async () => {
-  const connection = mysql.createConnection(dbConfig);
+exports.getAllStockBasicInfo = async (fields) => {
+  const connection = await mysql.createConnection(dbConfig);
   const query = util.promisify(connection.query).bind(connection);
   const end = util.promisify(connection.end).bind(connection);
+
+  // 构建查询字段列表
+  const fieldList = fields.join(', ');
+
   const basicQuery = `
-    select stock_code from stock_basic_info
+    SELECT ${fieldList} FROM stock_basic_info where stock_trade_status = 'Normal'
   `;
+
   try {
-    const result = await query(basicQuery);
+    const [...result] = await query(basicQuery);
     return result;
   } catch (error) {
-    throw new Error("Error executing getAllStockBasicInfo::" + error.message);
+    throw new Error(`Error executing getAllStockBasicInfo with fields: ${fields.join(', ')} :: ${error.message}`);
   } finally {
     await end();
   }
 };
+
+
 
 //从数据库获取所有个股当日交易数据
 exports.getAllStockDailyTradeData = async () => {
@@ -313,7 +320,6 @@ exports.getAnalseStockList = async (analyseDateStart, analyseDateEnd) => {
   try {
     // 执行查询
     const results = await query(getQuery, [analyseDateStart, analyseDateEnd]);
-
     // 获取字段名
     const fields = Object.keys(results[0] || {});
     const headers = fields.map(field => field.trim());
@@ -413,7 +419,6 @@ exports.getAnalyseStockDataMonth = async (latestDate) => {
     const rows = results.map(result => {
       return headers.map(header => result[header]);
     });
-
     // 返回结果
     return {
       headers: headers,
@@ -719,7 +724,6 @@ exports.addStockComment = async (uuid, code, analyseDate, analyseMethod, author,
   const connection = mysql.createConnection(dbConfig);
   const query = util.promisify(connection.query).bind(connection);
   const end = util.promisify(connection.end).bind(connection);
-  logger.info(uuid)
   const insertQuery = `
    INSERT ignore INTO stock_analyse_comments (uuid,stock_code, anaylse_date, analyse_method, author, content)
     VALUES (?,?,?,?,?,?)

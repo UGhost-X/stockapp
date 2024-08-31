@@ -47,8 +47,8 @@ exports.syncStockBasicInfo = async () => {
 };
 
 //获取股票基本信息
-exports.getAllStockBasicInfo = async () => {
-  const result = await stockModel.getAllStockBasicInfo();
+exports.getAllStockBasicInfo = async (fields) => {
+  const result = await stockModel.getAllStockBasicInfo([...fields]);
   return result;
 };
 
@@ -131,7 +131,8 @@ exports.getDailyTradeStockAmountService = (tradeData) => {
 //获取股票分析结果数据服务
 exports.getAnalyseStockListService = async (analyseDateStart, analyseDateEnd) => {
   try {
-    return await stockModel.getAnalseStockList(analyseDateStart, analyseDateEnd);
+    const results = await stockModel.getAnalseStockList(analyseDateStart, analyseDateEnd);
+    return results
   } catch (error) {
     throw new Error(
       "Error Excuting getAnalyseStockListService::" + error.message
@@ -153,7 +154,8 @@ exports.updateStockAnalyseOneMonthService = async (latestDate) => {
 //获取近一个月股票分析结果
 exports.getLatestMonthAnalyseSituationService = async (latestDate) => {
   try {
-    return await stockModel.getAnalyseStockDataMonth(latestDate);
+    const results = await stockModel.getAnalyseStockDataMonth(latestDate);
+    return results
   } catch (error) {
     throw new Error(
       "Error Excuting getLatestMonthAnalyseSituationService::" + error.message

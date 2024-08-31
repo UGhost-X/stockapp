@@ -1,31 +1,34 @@
-const stockService = require("../services/scrapDataService");
-const sendMailService = require("../services/mailSMTPService");
-const stockModel = require("../models/stockModel.js");
-const stockAnalysis = require("../services/stockAnalysis");
-const logger = require("../../config/logconfig");
 const moment = require('moment');
-
+const stockAnalysis = require("../services/stockAnalysis");
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 // 定义超时时间
-const TIMEOUT = 1000*60*5; // 5分钟
+const TIMEOUT = 1000 * 60 * 5; // 5分钟
 
 // 创建一个带超时功能的Promise
-function withTimeout(promise, timeout) {
+const withTimeout = async (promise, timeout) => {
   let timer;
   const rejectWithTimeout = () => {
     clearTimeout(timer);
     return Promise.reject(new Error('Operation timed out'));
   };
-  return new Promise((resolve, reject) => {
-    timer = setTimeout(rejectWithTimeout, timeout);
-    promise.then(resolve, reject);
-  }).finally(() => clearTimeout(timer));
-}
 
-exports.syncDailyStockTradeDataTask = async (stockService, logger, sendMailService) => {
+  try {
+    // 使用 Promise.race 来实现超时
+    return await Promise.race([
+      promise,
+      new Promise((_, reject) => {
+        timer = setTimeout(rejectWithTimeout, timeout);
+      })
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+};
+
+exports.syncDailyStockTradeDataTask = async (stockService, stockModel, logger, sendMailService) => {
   try {
     const latestTradeDate = await stockService.getLatestTradeDate();
     const latestDate = moment(latestTradeDate).format("YYYY-MM-DD");
@@ -35,7 +38,7 @@ exports.syncDailyStockTradeDataTask = async (stockService, logger, sendMailServi
       return null;
     }
 
-    // 获取所有股票的当日交易数据并保存
+    获取所有股票的当日交易数据并保存
     const data = await withTimeout(stockService.getAllStcokDailyTradeData(), TIMEOUT);
     await withTimeout(stockService.saveAllStcokDailyTradeData(latestTradeDate, data), TIMEOUT);
     logger.info("所有个股当日交易数据已下载");
@@ -48,7 +51,7 @@ exports.syncDailyStockTradeDataTask = async (stockService, logger, sendMailServi
     logger.info("所有个股当日交易数据已同步至历史交易数据");
 
     // 更新三个主板的数据
-    const connection = await stockService.getMySqlConnection();
+    const connection = await stockModel.getMySqlConnection();
     const mainPanelCodes = ['1.000001', '0.399006', '0.399001'];
     for (const code of mainPanelCodes) {
       let data = await withTimeout(stockService.getStockHistoryTradeData(code, latestDate, '20500101', 1), TIMEOUT);
@@ -78,26 +81,26 @@ exports.syncDailyStockTradeDataTask = async (stockService, logger, sendMailServi
     logger.info("更新分析数据跟踪情况已经完成");
 
     // 获取分析数据列表
-    const dataAnalyseList1 = await withTimeout(stockService.getAnalyseStockListService(latestDate), TIMEOUT);
-    const dataAnalyseList2 = await withTimeout(stockService.getLatestMonthAnalyseSituationService(latestDate), TIMEOUT);
+    const dataAnalyseList1 = await stockService.getAnalyseStockListService(latestDate);
+    const dataAnalyseList2 = await stockService.getLatestMonthAnalyseSituationService(latestDate);
     logger.info("获取分析数据列表已完成...");
 
     // 构建邮件内容
-    let tableHtml1 = sendMailService.getAnalyseTableTemplete(dataAnalyseList1.headers, dataAnalyseList1.rows, `${latestDate} 数据分析情况`);
-    let tableHtml2 = sendMailService.getAnalyseTableTemplete(dataAnalyseList2.headers, dataAnalyseList2.rows, `${latestDate} 前数据分析跟踪情况`);
+    let tableHtml1 = await withTimeout(sendMailService.getAnalyseTableTemplete(dataAnalyseList1.headers, dataAnalyseList1.rows, `${latestDate} 数据分析情况`), TIMEOUT);
+    let tableHtml2 = await withTimeout(sendMailService.getAnalyseTableTemplete(dataAnalyseList2.headers, dataAnalyseList2.rows, `${latestDate} 前数据分析跟踪情况`), TIMEOUT);
     let tableHtml = tableHtml1 + tableHtml2;
 
     if (dataAnalyseList1.rows.length === 0) {
       tableHtml = `
         <h3> 所有数据已经同步完成,同步数据量:: ${syncAmount[0].amount},今日无筛选结果 </h3>
-      `;
+      `+ tableHtml2;
     }
 
     // 发送邮件
     const syncAmount = await withTimeout(stockService.getDailyTradeStockAmountService(latestDate), TIMEOUT);
     await withTimeout(sendMailService.sendMailService(
       `${latestDate} 股票数据情况`,
-      `所有数据已经同步完成,同步数据量::${syncAmount[0].amount}`, 
+      `所有数据已经同步完成,同步数据量::${syncAmount[0].amount}`,
       tableHtml
     ), TIMEOUT);
 

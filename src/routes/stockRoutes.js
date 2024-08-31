@@ -14,6 +14,11 @@ router.get(
   "/getAllStockDailyTradeDataFromDF",
   stockController.getAllStockDailyTradeDataFromDF
 );
+//获取股票基本信息
+router.post(
+  "/getStockBasicInfoFromDB",
+  stockController.getStockBasicInfoFromDB
+);
 //根据secid获取个股历史数据
 router.post(
   "/getStockHistoryTradeDataFromDF",

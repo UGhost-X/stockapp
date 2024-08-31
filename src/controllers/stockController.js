@@ -58,12 +58,27 @@ exports.getStockHistoryTradeDataFromDF = async (req, res) => {
   }
 };
 
+//获取股票基本信息
+exports.getStockBasicInfoFromDB = async (req,res) =>{
+  const {fields} = req.body
+  try {
+    const results = await stockService.getAllStockBasicInfo([...fields]);
+    res.status(200).json({
+      data: results,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "getStockBasicInfoFromDB failed::" + error.message,
+    });
+  }
+}
+
 // 获取股票历史数据并保存到数据库
 exports.getStockHistoryTradeDataFromDFByMultilLine = async (req, res) => {
   let { startDate, endData, lmt } = req.query;
   const connection = await stockModel.getMySqlConnection(); // 创建数据库连接
   try {
-    const stockBasicInfo = await stockService.getAllStockBasicInfo(); // 传递连接
+    const stockBasicInfo = await stockService.getAllStockBasicInfo(['stock_code']); // 传递连接
     const stockCodes = stockBasicInfo.map((row) => row.stock_code);
 
     const limit = pLimit(10); // 设置并发限制
