@@ -54,7 +54,7 @@ exports.getAllStockBasicInfo = async () => {
 
 //从DF获取个股历史数据
 exports.getStockHistoryTradeData = async (secid, startDate, endDate, lmt) => {
-  
+
   secid = secid.includes(".")
     ? secid
     : secid.startsWith("0") || secid.startsWith("3")
@@ -74,7 +74,7 @@ exports.getStockHistoryTradeData = async (secid, startDate, endDate, lmt) => {
   }
 };
 //从数据库获取个股历史数据
-exports.getStockHistoryTradeDataFromDB = async (secid, startDate, endDate)=>{
+exports.getStockHistoryTradeDataFromDB = async (secid, startDate, endDate) => {
 
 }
 
@@ -162,9 +162,9 @@ exports.getLatestMonthAnalyseSituationService = async (latestDate) => {
 }
 
 //更新股票的标记状态，如果为1表示被选中
-exports.updateStockAnalyseIsMarkService = async (code,analyseDate,analyseMethod,isMark) =>{
+exports.updateStockAnalyseIsMarkService = async (code, analyseDate, analyseMethod, isMark) => {
   try {
-    return await stockModel.updateStockAnalyseIsMark(code,analyseDate,analyseMethod,isMark);
+    return await stockModel.updateStockAnalyseIsMark(code, analyseDate, analyseMethod, isMark);
   } catch (error) {
     throw new Error(
       "Error Excuting updateStockAnalyseIsMarkService::" + error.message
@@ -173,9 +173,9 @@ exports.updateStockAnalyseIsMarkService = async (code,analyseDate,analyseMethod,
 }
 
 //获取K线相关数据
-exports.getKlineDataService = async (code,startDate,endDate) => {
+exports.getKlineDataService = async (code, startDate, endDate) => {
   try {
-    return await stockModel.getKlineData(code,startDate,endDate);
+    return await stockModel.getKlineData(code, startDate, endDate);
   } catch (error) {
     throw new Error(
       "Error Excuting getKlineDataService::" + error.message
@@ -184,9 +184,9 @@ exports.getKlineDataService = async (code,startDate,endDate) => {
 }
 
 //获取股票预警数据
-exports.getStockWarningDataService = async (waringDate,warningCreteria)=>{
+exports.getStockWarningDataService = async (waringDate, warningCreteria) => {
   try {
-    return await stockModel.getStockWarningData(waringDate,warningCreteria);
+    return await stockModel.getStockWarningData(waringDate, warningCreteria);
   } catch (error) {
     throw new Error(
       "Error Excuting getStockWarningDataService::" + error.message
@@ -195,7 +195,7 @@ exports.getStockWarningDataService = async (waringDate,warningCreteria)=>{
 }
 
 //获取历史最低股价
-exports.getStockWarningHistoryMinService = async (waringDate)=>{
+exports.getStockWarningHistoryMinService = async (waringDate) => {
   try {
     return await stockModel.getStockWarningHistoryMinData(waringDate);
   } catch (error) {
@@ -206,12 +206,45 @@ exports.getStockWarningHistoryMinService = async (waringDate)=>{
 }
 
 //历史最低股价计算服务
-exports.calcStockWarningHistoryMinService = async ()=>{
+exports.calcStockWarningHistoryMinService = async () => {
   try {
     await stockModel.calcHistoryMinClose();
   } catch (error) {
     throw new Error(
       "Error Excuting calcStockWarningHistoryMinService::" + error.message
+    );
+  }
+}
+
+//更新评论服务
+exports.addStockCommentService = async (uuid, code, analyseDate, analyseMethod, author, commentContent) => {
+  try {
+    await stockModel.addStockComment(uuid, code, analyseDate, analyseMethod, author, commentContent);
+  } catch (error) {
+    throw new Error(
+      "Error Excuting addStockCommentService::" + error.message
+    );
+  }
+}
+
+//获取评论服务
+exports.getStockCommentService = async (code, analyseDate, analyseMethod, author) => {
+  try {
+    return await stockModel.getStockComments(code, analyseDate, analyseMethod, author);
+  } catch (error) {
+    throw new Error(
+      "Error Excuting getStockCommentService::" + error.message
+    );
+  }
+}
+
+//删除评论服务
+exports.deleteStockCommentService = async (uuid) => {
+  try {
+    await stockModel.deleteStockComment(uuid);
+  } catch (error) {
+    throw new Error(
+      "Error Excuting deleteStockCommentService::" + error.message
     );
   }
 }

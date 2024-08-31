@@ -65,6 +65,27 @@ router.post(
   stockController.getStockAnalyseDate
 );
 
+
+//更新股票评论
+router.post(
+  "/addStockCommentData",
+  stockController.addStockCommentData
+);
+
+//获取股票评论
+router.post(
+  "/getStockCommentData",
+  stockController.getStockCommentData
+);
+
+//删除股票评论
+router.post(
+  "/deleteStockCommentData",
+  stockController.deleteStockCommentData
+);
+
+
+
 //--------------测试---------------//
 router.post(
   "/sendEmailTest",

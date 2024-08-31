@@ -358,3 +358,46 @@ exports.getDailyTradeStockAmountTest = async (req, res) => {
   }
 }
 
+//添加股票评论
+exports.addStockCommentData = async (req, res) => {
+  const { uuid,code, analyseDate, analyseMethod, author, commentContent } = req.body;
+  try {
+    await stockService.addStockCommentService(uuid,code, analyseDate, analyseMethod, author, commentContent);
+    res.status(200).json({
+      message: "评论数据更新成功",
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "addStockCommentData failed::" + error.message,
+    });
+  }
+}
+
+//获取股票评论
+exports.getStockCommentData = async (req, res) => {
+  const { code, analyseDate, analyseMethod, author } = req.body;
+  try {
+    const results = await stockService.getStockCommentService(code, analyseDate, analyseMethod, author);
+    res.status(200).json({
+      data: results
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "getStockCommentData failed::" + error.message,
+    });
+  }
+}
+//删除股票评论
+exports.deleteStockCommentData = async (req, res) => {
+  const { uuid } = req.body;
+  try {
+    await stockService.deleteStockCommentService(uuid)
+    res.status(200).json({
+      message: "删除股票评论成功",
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "deleteStockCommentData failed::" + error.message,
+    });
+  }
+}

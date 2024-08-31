@@ -713,3 +713,63 @@ exports.getStockWarningHistoryMinData = async (warningDate) => {
     await end();
   }
 }
+
+//更新评论
+exports.addStockComment = async (uuid, code, analyseDate, analyseMethod, author, commentContent) => {
+  const connection = mysql.createConnection(dbConfig);
+  const query = util.promisify(connection.query).bind(connection);
+  const end = util.promisify(connection.end).bind(connection);
+  logger.info(uuid)
+  const insertQuery = `
+   INSERT ignore INTO stock_analyse_comments (uuid,stock_code, anaylse_date, analyse_method, author, content)
+    VALUES (?,?,?,?,?,?)
+  `;
+  try {
+    await query(insertQuery, [uuid, code, analyseDate, analyseMethod, author, commentContent]);
+  } catch (error) {
+    logger.error('addStockComment failed:::' + error.message);
+    throw error;
+  } finally {
+    await end();
+  }
+}
+//获取评论数据
+exports.getStockComments = async (code, analyseDate, analyseMethod) => {
+  const connection = mysql.createConnection(dbConfig);
+  const query = util.promisify(connection.query).bind(connection);
+  const end = util.promisify(connection.end).bind(connection);
+  const selectQuery = `
+    SELECT uuid,author,content,pub_time FROM stock_analyse_comments
+    WHERE stock_code = ? AND anaylse_date = ? AND analyse_method = ?
+  `;
+
+  try {
+    const [...rows] = await query(selectQuery, [code, analyseDate, analyseMethod]);
+    return rows;
+  } catch (error) {
+    logger.error('getStockComments failed:::' + error.message);
+    throw error;
+  } finally {
+    await end();
+  }
+};
+//删除评论
+exports.deleteStockComment = async (uuid) => {
+  const connection = mysql.createConnection(dbConfig);
+  const query = util.promisify(connection.query).bind(connection);
+  const end = util.promisify(connection.end).bind(connection);
+  const deleteQuery = `
+    DELETE FROM stock_analyse_comments
+    WHERE uuid = ?
+  `;
+
+  try {
+    await query(deleteQuery, [uuid]);
+    return { success: true };
+  } catch (error) {
+    logger.error('deleteStockComment failed:::' + error.message);
+    throw error;
+  } finally {
+    await end();
+  }
+};
