@@ -43,17 +43,23 @@
               <template #renderItem="{ item }">
                 <a-list-item class="comment-content">
                   <a-comment :author="item.author" :avatar="item.avatar" :content="item.content"
-                    :datetime="item.datetime" />
+                    :datetime="item.datetime" class="comment-content-item">
+                    <!-- 添加删除图标 -->
+                    <DeleteOutlined @click="handleCommentDelete(item.uuid)" style="font-size:22px;" />
+                  </a-comment>
                 </a-list-item>
               </template>
             </a-list>
             <a-comment>
               <template #content>
                 <a-form-item>
-                  <a-textarea v-model:value="commentValue" :rows="4" />
+                  <div style="margin: 0 28px;">
+                    <a-textarea v-model:value="commentValue" :rows="4" style="" />
+                  </div>
+
                 </a-form-item>
                 <a-form-item>
-                  <a-button html-type="submit" :loading="submitting" type="primary" @click="handleSubmit">
+                  <a-button html-type="submit" :loading="submitting" type="primary" @click="handleSubmit" style="margin-left: 30px;">
                     发表
                   </a-button>
                 </a-form-item>
@@ -100,7 +106,7 @@
 
 </template>
 <script setup lang="ts">
-import { RadarChartOutlined } from "@ant-design/icons-vue";
+import { RadarChartOutlined, DeleteOutlined } from "@ant-design/icons-vue";
 import DeleteIcon from "@/components/DeleteIcon.vue";
 import CommonKlineChart from "@/components/CommonKlineChart.vue";
 import { ref, Ref, watch, nextTick, onMounted, onBeforeUnmount } from "vue";
@@ -111,7 +117,7 @@ dayjs.extend(relativeTime);
 import { message } from 'ant-design-vue';
 import zhCN from 'ant-design-vue/es/locale/zh_CN';
 import 'dayjs/locale/zh-cn';
-
+import { v4 as uuidv4 } from 'uuid';
 // 设置 dayjs 的全局语言为中文
 dayjs.locale('zh-cn');
 
@@ -363,10 +369,10 @@ const closeCandidatorModal = async () => {
     const status = await updateStockAnalyseIsMarkStatus(code, date, analyseMethod, isMark);
     if (status !== 200) {
       candidatorButtonloading.value = false;
-      console.error(`Failed to update item with code ${code}`);
+      message.error('候选股标记失败')
     } else {
       candidatorButtonloading.value = false;
-      console.log(`Successfully updated item with code ${code}`);
+      message.success('候选股标记成功')
     }
   }
 }
@@ -428,25 +434,75 @@ type Comment = Record<string, string>;
 const comments = ref<Comment[]>([]);
 const submitting = ref<boolean>(false);
 const commentValue = ref<string>('');
-const handleSubmit = () => {
+const handleSubmit = async () => {
   if (!commentValue.value) {
     return;
   }
-
   submitting.value = true;
-
-  submitting.value = false;
-  comments.value = [
-    {
+  try {
+    comments.value = [
+      {
+        uuid: uuidv4(),
+        author: 'UGhost',
+        content: commentValue.value,
+        datetime: dayjs().fromNow(),
+      },
+      ...comments.value,
+    ];
+    await axios.post('/api/addStockCommentData', {
+      uuid: comments.value[0].uuid,
+      code: stockCode.value,
+      analyseDate: selectedValue.value.split(' ')[2],
+      analyseMethod: 'volumnEnerge',
       author: 'UGhost',
-      content: commentValue.value,
-      datetime: dayjs().fromNow(),
-    },
-    ...comments.value,
-  ];
-  commentValue.value = '';
-
+      commentContent: commentValue.value,
+    });
+    commentValue.value = '';
+  } catch (error) {
+    console.error('Failed to submit comment:', error);
+  } finally {
+    submitting.value = false;
+  }
 };
+
+// 获取股票评论
+const fetchStockComments = async (code: string, analyseDate: string, analyseMethod: string, author: string) => {
+  try {
+    const response = await axios.post('/api/getStockCommentData', {
+      code: code,
+      analyseDate: analyseDate,
+      analyseMethod: analyseMethod,
+      author: author
+    });
+    comments.value = response.data.data.map((comment: Comment) => {
+      const pubTime = dayjs(comment.pub_time);
+      const timeFromNow = pubTime.fromNow();
+      const isOlderThanTenMinutes = dayjs().diff(pubTime, 'minute') > 10;
+      const formattedTime = isOlderThanTenMinutes ? pubTime.format('YYYY-MM-DD HH:mm') : timeFromNow;
+
+      return {
+        ...comment,
+        datetime: formattedTime,
+      };
+    });
+  } catch (error) {
+    console.error('Failed to fetch comments:', error);
+  }
+};
+
+//删除股票评论
+const handleCommentDelete = async (uuid: string) => {
+  try {
+    await axios.post('/api/deleteStockCommentData', {
+      uuid: uuid
+    });
+    // 从前端列表中移除对应评论
+    comments.value = comments.value.filter((comment) => comment.uuid !== uuid);
+  } catch (error) {
+    console.error('Failed to delete comment:', error);
+  }
+}
+
 
 onMounted(async () => {
   let latestTradeDate = await getLatestTradeDate();
@@ -473,6 +529,7 @@ onMounted(async () => {
   }
   loadKLine.value = false;
   loadData();
+  await fetchStockComments(stockCode.value, selectedValue.value.split(' ')[2], 'volumnEnerge', 'UGhost');
   window.addEventListener('keydown', switchHotkey);
 });
 
@@ -513,14 +570,24 @@ onBeforeUnmount(() => {
 .comment-content {
   background-color: #d5ebe1;
   border-radius: 20px;
+  margin: 10px 30px;
 }
 
-:deep(.ant-comment-content-author) {
-  font-size: 20px !important;
+.comment-content-item {
+  margin: 10px 0;
+}
+
+:deep(.ant-comment-content-author-name) {
+  font-size: 18px !important;
+}
+
+:deep(.ant-comment-content-author-time) {
+  font-size: 18px !important;
 }
 
 :deep(.ant-comment-content-detail) {
-  font-size: 18px !important;
+  font-size: 22px !important;
+  padding: 5px 0;
 }
 
 /* enter 事件需要提供一个聚焦，聚焦产生的黑框通过这个去除 */
