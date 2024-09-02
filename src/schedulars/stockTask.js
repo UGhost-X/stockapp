@@ -38,7 +38,7 @@ exports.syncDailyStockTradeDataTask = async (stockService, stockModel, logger, s
       return null;
     }
 
-    获取所有股票的当日交易数据并保存
+    //获取所有股票的当日交易数据并保存
     const data = await withTimeout(stockService.getAllStcokDailyTradeData(), TIMEOUT);
     await withTimeout(stockService.saveAllStcokDailyTradeData(latestTradeDate, data), TIMEOUT);
     logger.info("所有个股当日交易数据已下载");
