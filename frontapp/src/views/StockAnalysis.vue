@@ -28,7 +28,7 @@
           <div class="cardscontent">
             <a-skeleton v-show="loadKLine" active :paragraph="{ rows: 15 }" />
             <CommonKlineChart v-if="!loadKLine" :stockCode="stockCode" :stockTitle="stockTitle" :endDate="endDate"
-              @closeSkeleton="handleEmitEven" @contextmenu="showModal" ref="commonKlineChart" />
+              @closeSkeleton="handleEmitEven"  @click.middle="nextOption" @contextmenu="showModal" ref="commonKlineChart" />
             <a-modal v-model:open="addCandidatorModal" title="是否加入后选股" centered @ok="handleModalOkEven">
               <span> 是否加入后续股 </span>
             </a-modal>
@@ -45,7 +45,8 @@
                   <a-comment :author="item.author" :avatar="item.avatar" :content="item.content"
                     :datetime="item.datetime" class="comment-content-item">
                     <!-- 添加删除图标 -->
-                    <DeleteOutlined @click="handleCommentDelete(item.uuid)" style="font-size:22px;" />
+                    <DeleteOutlined @click="handleCommentDelete(item.uuid)"
+                      style="font-size:22px;position: absolute;right: 20px;bottom: 10px;color: #c8161d;" />
                   </a-comment>
                 </a-list-item>
               </template>
@@ -59,7 +60,8 @@
 
                 </a-form-item>
                 <a-form-item>
-                  <a-button html-type="submit" :loading="submitting" type="primary" @click="handleSubmit" style="margin-left: 30px;">
+                  <a-button html-type="submit" :loading="submitting" type="primary" @click="handleSubmit"
+                    style="margin-left: 30px;">
                     发表
                   </a-button>
                 </a-form-item>
@@ -94,12 +96,18 @@
       <div style="position: absolute; bottom: 40px;">
         <a-space>
           <a-button type="primary" @click="openCandidatorModal" :loading='candidatorButtonloading'>候选确认</a-button>
-          <a-button type="primary" @click="saveData">候选暂存</a-button>
-          <a-button danger @click="clearTable">候选清空</a-button>
+          <a-button type="primary" @click="openTempCandidatorModal">候选暂存</a-button>
+          <a-button danger @click="openClearCandidatorModal">候选清空</a-button>
         </a-space>
       </div>
       <a-modal v-model:open="setCandidatorModal" title="候选股确认" centered @ok="closeCandidatorModal">
-        <p>确认保存后选股数据？</p>
+        <p>确认保存侯选股数据？</p>
+      </a-modal>
+      <a-modal v-model:open="clearCandidatorModalButton" title="候选股清除确认" centered @ok="closeClearCandidatorModal">
+        <p>确认清除侯选股数据？</p>
+      </a-modal>
+      <a-modal v-model:open="setTempCandidatorModalButton" title="候选股暂存确认" centered @ok="closeTempCandidatorModal">
+        <p>确认暂存侯选股数据？</p>
       </a-modal>
     </a-drawer>
   </a-layout>
@@ -319,21 +327,15 @@ interface DataItem {
   date: string;
 }
 const candidatorButtonloading = ref<boolean>(false);
-const saveData = () => {
-  localStorage.setItem('tabledata', JSON.stringify(tabledata.value));
-}
+
+const tabledata: Ref<DataItem[]> = ref([]);
+
 const loadData = () => {
   const savedData = localStorage.getItem('tabledata');
   if (savedData) {
     tabledata.value = JSON.parse(savedData);
   }
 };
-const clearTable = () => {
-  tabledata.value = [];
-  localStorage.removeItem('tabledata');
-};
-const tabledata: Ref<DataItem[]> = ref([]);
-
 
 
 //更新股票标记数据
@@ -376,6 +378,41 @@ const closeCandidatorModal = async () => {
     }
   }
 }
+
+const clearCandidatorModalButton = ref<boolean>(false);
+const openClearCandidatorModal = () => {
+  clearCandidatorModalButton.value = true;
+};
+const closeClearCandidatorModal = async () => {
+  clearCandidatorModalButton.value = false;
+  //清除表格数据
+  tabledata.value = [];
+  localStorage.removeItem('tabledata');
+  // for (const item of tabledata.value) {
+  //   const { code, date } = item;
+  //   const analyseMethod = 'volumnEnerge';
+  //   const isMark = 0;
+  //   const status = await updateStockAnalyseIsMarkStatus(code, date, analyseMethod, isMark);
+
+  //   if (status !== 200) {
+  //     candidatorButtonloading.value = false;
+  //     message.error('候选股标记清除失败')
+  //   } else {
+  //     candidatorButtonloading.value = false;
+  //     message.success('候选股标记清除成功')
+  //   }
+  // }
+}
+const setTempCandidatorModalButton = ref<boolean>(false);
+const openTempCandidatorModal = () => {
+  setTempCandidatorModalButton.value = true;
+}
+const closeTempCandidatorModal = async () => {
+  setTempCandidatorModalButton.value = false;
+  localStorage.setItem('tabledata', JSON.stringify(tabledata.value));
+  message.success("候选股暂存成功!")
+}
+
 //K线区
 const stockCode = ref('')
 const commonKlineChart = ref<InstanceType<typeof CommonKlineChart> | null>(null);
@@ -383,7 +420,7 @@ const loadKLine = ref<boolean>(true)
 const handleEmitEven = () => {
   loadKLine.value = false;
 }
-const nextOption = () => {
+const nextOption = async () => {
   const currentIndex = options.value.findIndex(option => option.value === selectedValue.value);
   if (currentIndex === -1) return; // 如果当前值不在选项中，则不做任何事情
   const nextIndex = (currentIndex + 1) % options.value.length;
@@ -397,7 +434,7 @@ const nextOption = () => {
   } else {
     endDate.value = '2050-12-31'
   }
-
+  await fetchStockComments(stockCode.value, selectedValue.value.split(' ')[2], 'volumnEnerge', 'UGhost');
 }
 
 watch(loadKLine, async () => {
@@ -464,7 +501,6 @@ const handleSubmit = async () => {
     submitting.value = false;
   }
 };
-
 // 获取股票评论
 const fetchStockComments = async (code: string, analyseDate: string, analyseMethod: string, author: string) => {
   try {
@@ -575,6 +611,7 @@ onBeforeUnmount(() => {
 
 .comment-content-item {
   margin: 10px 0;
+  width: 95vw;
 }
 
 :deep(.ant-comment-content-author-name) {

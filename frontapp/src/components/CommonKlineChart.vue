@@ -6,7 +6,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch, defineProps, defineEmits, reactive, onUpdated } from 'vue';
+import { ref, onMounted, watch, defineProps, defineEmits, reactive } from 'vue';
 import { debounce } from 'lodash';
 import * as echarts from 'echarts/core';
 import 'vue3-toastify/dist/index.css';
@@ -200,11 +200,11 @@ const chartOption = (data, startValue, endValue, stocktitle) => {
             pieces: [
                 {
                     value: 1,
-                    color: '#2ECC71'
+                    color: '#EC0000'
                 },
                 {
                     value: -1,
-                    color: '#EC0000'
+                    color: '#2ECC71'
                 }
             ]
         },

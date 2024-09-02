@@ -198,11 +198,11 @@ const chartOption = (data, startValue,endValue,stockTitle) => {
             pieces: [
                 {
                     value: 1,
-                    color: '#2ECC71'
+                    color: '#EC0000'
                 },
                 {
                     value: -1,
-                    color: '#EC0000'
+                    color: '#2ECC71'
                 }
             ]
         },

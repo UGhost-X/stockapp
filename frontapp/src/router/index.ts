@@ -4,6 +4,7 @@ import StockAnalysis from '@/views/StockAnalysis.vue'
 import HistoryForce from '@/views/HistoryForce.vue'
 import HistoryRecords from '@/views/HistoryRecords.vue'
 import LogManagement from '@/views/LogManagement.vue'
+import StockReview from '@/views/StockReview.vue'
 
 const routes: Array<RouteRecordRaw> = [
   {
@@ -27,11 +28,11 @@ const routes: Array<RouteRecordRaw> = [
     }
   },
   {
-    path: '/historyforce',
-    name: 'historyforce',
-    component: HistoryForce,
+    path: '/stockreview',
+    name: 'stockreview',
+    component: StockReview,
     meta:{
-      title:'历史跟踪'
+      title:'个股复盘'
     }
   },
   {
