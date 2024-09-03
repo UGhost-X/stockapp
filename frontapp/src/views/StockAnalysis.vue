@@ -154,7 +154,7 @@ const switchHotkey = (event: KeyboardEvent) => {
   }
 };
 // 标题选项控制
-const titleChange = (value: string) => {
+const titleChange = async (value: string) => {
   stockCode.value = value.split(' ')[0];
   stockTitle.value = value;
   if (!checked.value) {
@@ -162,6 +162,7 @@ const titleChange = (value: string) => {
   } else {
     endDate.value = '2050-12-31'
   }
+  await fetchStockComments(stockCode.value, selectedValue.value.split(' ')[2], 'volumnEnerge', 'UGhost');
 };
 const selectedValue = ref('');
 
