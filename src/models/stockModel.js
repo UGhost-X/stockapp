@@ -541,7 +541,6 @@ exports.getKlineData = async (code, startDate, endDate) => {
 
 //获取每日涨跌数
 exports.getStockUpDownRatio = async (startDate, endDate) => {
-  logger.info(startDate=":::"+endDate)
   const connection = mysql.createConnection(dbConfig);
   const query = util.promisify(connection.query).bind(connection);
   const end = util.promisify(connection.end).bind(connection);
