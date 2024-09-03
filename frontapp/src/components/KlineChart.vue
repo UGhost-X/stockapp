@@ -50,13 +50,13 @@ let nowDataZoomStartIndex;
 let nowDataZoomEndIndex;
 const switchValue = ref(false)
 // 获取指定个股的数据
-async function getStockInfoForCondidator(stockCode, startDate) {
+const getStockInfoForCondidator = async (stockCode, startDate, endDate) => {
+    endDate = endDate || '2050-01-30'
     try {
         const response = await axios.post('api/getKlineDateFromDB', {
             code: stockCode,
             startDate: startDate,
-            endDate: '2050-01-30'
-
+            endDate: endDate
         });
         storeData.length = 0;
         storeData.push(...response.data.data);
@@ -66,6 +66,26 @@ async function getStockInfoForCondidator(stockCode, startDate) {
         console.error('Error fetching stock info for condidator:', error);
     }
 }
+//获取股票每日涨跌数数据
+const dailyUpDownCount = ref([])
+const getStockUpDownRation = async (startDate, endDate) => {
+    endDate = endDate || '2050-01-30'
+    try {
+        const response = await axios.post('api/getStockUpDownRatioFromDB', {
+            startDate: startDate,
+            endDate: endDate
+        });
+        response.data.data.map(item => {
+            dailyUpDownCount.value.push({
+                tradeDate: item[0],
+                posCount: item[1],
+            })
+        })
+    } catch (error) {
+        console.error('Error fetching getStockUpDownRation:', error);
+    }
+}
+
 // 防抖设置
 const scrollWheelEvent = debounce(nextStockSelectIndex, 500)
 // 添加监听事件
@@ -103,6 +123,12 @@ const calculateMA = (dayCount, data) => {
     }
     return result;
 }
+
+const formatNumber = new Intl.NumberFormat('en-US', {
+    notation: 'compact', // 使用紧凑表示法，如 1.23k, 4.56M
+    maximumFractionDigits: 2 // 最多保留两位小数
+});
+
 function splitData(rawData) {
     let categoryData = [];
     let values = [];
@@ -119,7 +145,7 @@ function splitData(rawData) {
     };
 }
 const stockTitle = ref('');
-const chartOption = (data, startValue,endValue,stockTitle) => {
+const chartOption = (data, startValue, endValue, stockTitle) => {
     return {
         title: {
             text: stockTitle,
@@ -134,13 +160,14 @@ const chartOption = (data, startValue,endValue,stockTitle) => {
         tooltip: {
             trigger: 'axis',
             axisPointer: {
+                type: 'cross',
                 link: [
                     {
                         xAxisIndex: 'all'
                     }
                 ],
                 label: {
-                    backgroundColor: '#777'
+                    backgroundColor: '#777',
                 }
             },
             borderWidth: 1,
@@ -156,7 +183,6 @@ const chartOption = (data, startValue,endValue,stockTitle) => {
                 obj[['left', 'right'][+(pos[0] < size.viewSize[0] / 2)]] = pos[0] < size.viewSize[0] / 2 ? size.viewSize[0] / 30 : size.viewSize[0] / 6;
                 return obj;
             },
-
             formatter: function (data) {
                 let result = '';
                 let content = '';
@@ -181,16 +207,13 @@ const chartOption = (data, startValue,endValue,stockTitle) => {
                 })
                 return result;
             }
-
         },
         legend: {
             data: ['MA5', 'MA21', 'MA169'],
             bottom: '0%',
             show: false
         },
-
         animation: true,
-
         visualMap: {
             show: true,
             seriesIndex: 4,
@@ -210,15 +233,21 @@ const chartOption = (data, startValue,endValue,stockTitle) => {
             left: '15%',
             right: '2%',
             bottom: '20%',
-            top: '5%'
+            top: '5%',
+            height: '80%'
         },
         {
             left: '15%',
             right: '2%',
             top: '80%',
-            height: '16%'
+            height: '10%'
+        },
+        {
+            left: '15%',
+            right: '2%',
+            top: '90%',
+            height: '10%'
         }],
-
         xAxis: [
             {
                 type: 'category',
@@ -244,6 +273,18 @@ const chartOption = (data, startValue,endValue,stockTitle) => {
                 axisLabel: { show: false },
                 min: 'dataMin',
                 max: 'dataMax'
+            },
+            {
+                type: 'category',
+                gridIndex: 2,
+                data: data.categoryData,
+                boundaryGap: false,
+                axisLine: { onZero: false },
+                axisTick: { show: false },
+                splitLine: { show: false },
+                axisLabel: { show: false },
+                min: 'dataMin',
+                max: 'dataMax'
             }
         ],
         yAxis: [
@@ -260,10 +301,36 @@ const chartOption = (data, startValue,endValue,stockTitle) => {
                 axisLabel: { show: false },
                 axisLine: { show: false },
                 axisTick: { show: false },
-                splitLine: { show: false }
+                splitLine: { show: false },
+                axisPointer: {
+                    label: {
+                        formatter: (params) => {
+                            return formatNumber.format(params.value)
+                        }
+                    }
+                }
+            },
+            {
+                scale: true,
+                type: 'value',
+                gridIndex: 2,
+                splitNumber: 0,
+                axisLabel: { show: false },
+                axisLine: { show: false },
+                axisTick: { show: false },
+                splitLine: { show: false },
+                axisPointer: {
+                    snap: true,
+                    label: {
+                        formatter: function (params) {
+                            // 只显示每个点的值
+                            return params.value.toFixed(0);
+                        }
+                    }
+
+                }
             }
         ],
-        // start、end 可以调节底部滑块的位置，百分比的形式
         dataZoom: [
             {
                 type: 'inside',
@@ -271,9 +338,16 @@ const chartOption = (data, startValue,endValue,stockTitle) => {
                 endValue: endValue,
             },
             {
-                show: false,
-                xAxisIndex: [0, 1],
-                type: 'slider',
+                xAxisIndex: [0, 1, 2],
+                type: 'inside',
+                top: '85%',
+                startValue: startValue,
+                endValue: endValue
+            },
+            {
+                // show: false,
+                xAxisIndex: [0, 1, 2],//
+                type: 'inside',
                 top: '85%',
                 startValue: startValue,
                 endValue: endValue
@@ -326,11 +400,28 @@ const chartOption = (data, startValue,endValue,stockTitle) => {
                 type: 'bar',
                 xAxisIndex: 1,
                 yAxisIndex: 1,
-                data: data.volumes
+                data: data.volumes,
+            },
+            {
+                name: 'upCount',
+                type: 'line',
+                xAxisIndex: 2,
+                yAxisIndex: 2,
+                data: data.posCount,
+                lineStyle: {
+                    color: '#FF0000', // 设置线条颜色
+                    width: 2 // 设置线条宽度
+                },
+                itemStyle: {
+                    color: '#FF0000' // 设置标记点颜色
+                },
+                showSymbol: true, // 显示标记点
+                symbolSize: 6 // 设置标记点大小
             }
         ]
     }
 }
+
 const chartData = ref([])
 const init = async () => {
     if (myChart != null && myChart !== "" && myChart !== undefined) {
@@ -338,13 +429,28 @@ const init = async () => {
     }
     myChart = echarts.init(main.value);
     await getStockInfoForCondidator('1.000001', '2020-01-01')
+    await getStockUpDownRation('2020-01-01');
+    //把每日涨跌数写入storeData
     chartData.value = splitData(storeData);
-    stockTitle.value ="上证指数  " + chartData.value.categoryData[chartData.value.categoryData.length-1];
+    const ratioMap = new Map();
+    dailyUpDownCount.value.forEach(item => {
+        ratioMap.set(item.tradeDate, item.posCount);
+    });
+    chartData.value.posCount = [];
+    chartData.value.categoryData.forEach(date => {
+        if (ratioMap.has(date)) {
+            // 如果有对应的ratioPos2Neg值，则添加到volumes
+            chartData.value.posCount.push(ratioMap.get(date));
+        } else {
+            chartData.value.posCount.push(0);
+        }
+    })
+    stockTitle.value = "上证指数  " + chartData.value.categoryData[chartData.value.categoryData.length - 1];
     startValue.value = storeData.length - 160
     nowDataZoomStartIndex = startValue.value
     endValue.value = storeData.length
     nowDataZoomEndIndex = endValue.value
-    myChart.setOption(chartOption(chartData.value, startValue.value, endValue.value,stockTitle.value));
+    myChart.setOption(chartOption(chartData.value, startValue.value, endValue.value, stockTitle.value));
 }
 
 //如果加载完毕通知父组件关闭鱼骨图

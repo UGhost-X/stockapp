@@ -119,7 +119,11 @@ const splitData = (rawData) => {
         volumes: volumes
     };
 }
-
+//格式化y轴数字
+const formatNumber = new Intl.NumberFormat('en-US', {
+    notation: 'compact', // 使用紧凑表示法，如 1.23k, 4.56M
+    maximumFractionDigits: 2 // 最多保留两位小数
+});
 const chartOption = (data, startValue, endValue, stocktitle) => {
     return {
         title: {
@@ -262,7 +266,14 @@ const chartOption = (data, startValue, endValue, stocktitle) => {
                 axisLabel: { show: false },
                 axisLine: { show: false },
                 axisTick: { show: false },
-                splitLine: { show: false }
+                splitLine: { show: false },
+                axisPointer: {
+                    label: {
+                        formatter: (params) => {
+                            return formatNumber.format(params.value)
+                        }
+                    }
+                }
             }
         ],
         // start、end 可以调节底部滑块的位置，百分比的形式
