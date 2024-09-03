@@ -171,6 +171,21 @@ exports.getKlineDateFromDB = async (req, res) => {
   }
 }
 
+//获取股票涨跌数
+exports.getStockUpDownRatioFromDB = async (req, res) => {
+  const { startDate, endDate } = req.body;
+  try {
+    const results = await stockService.getStockUpDownRatioService(startDate, endDate);
+    res.status(200).json({
+      data: results.rows,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "getStockUpDownRatioFromDB failed::" + error.message,
+    });
+  }
+}
+
 //获取股票分析数据
 exports.getStockAnalyseDate = async (req, res) => {
   const { startDate, endDate } = req.body;

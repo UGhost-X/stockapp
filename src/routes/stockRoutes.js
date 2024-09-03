@@ -47,6 +47,12 @@ router.post(
   stockController.getKlineDateFromDB
 );
 
+router.post(
+  "/getStockUpDownRatioFromDB",
+  stockController.getStockUpDownRatioFromDB
+);
+
+
 //更新股票标记状态
 router.post(
   "/updateStockAnalyseIsMarkStatus",

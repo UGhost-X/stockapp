@@ -185,6 +185,17 @@ exports.getKlineDataService = async (code, startDate, endDate) => {
   }
 }
 
+//获取股票每日涨跌数
+exports.getStockUpDownRatioService = async (startDate, endDate) => {
+  try {
+    return await stockModel.getStockUpDownRatio(startDate, endDate);
+  } catch (error) {
+    throw new Error(
+      "Error Excuting getStockUpDownRatioService::" + error.message
+    );
+  }
+}
+
 //获取股票预警数据
 exports.getStockWarningDataService = async (waringDate, warningCreteria) => {
   try {

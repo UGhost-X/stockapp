@@ -515,10 +515,43 @@ exports.getKlineData = async (code, startDate, endDate) => {
   const end = util.promisify(connection.end).bind(connection);
   const dataQuery = `
     select DATE_FORMAT(trade_date, '%Y-%m-%d'),open,close,low,high,pct_ratio,volume from stockdata.stock_history_trade 
-    where stock_code = ? and trade_date between ? and ?
+    where stock_code = ? and trade_date between ? and ? 
   `;
   try {
     const results = await query(dataQuery, [code, startDate, endDate]);
+    // 获取字段名
+    const fields = Object.keys(results[0] || {});
+    const headers = fields.map(field => field.trim());
+    // 将结果转换为二维数组
+    const rows = results.map(result => {
+      return headers.map(header => result[header]);
+    });
+
+    // 返回结果
+    return {
+      rows: rows
+    };
+  } catch (error) {
+    logger.error('getKlineData failed:::' + error.message);
+    throw error;
+  } finally {
+    await end();
+  }
+}
+
+//获取每日涨跌数
+exports.getStockUpDownRatio = async (startDate, endDate) => {
+  logger.info(startDate=":::"+endDate)
+  const connection = mysql.createConnection(dbConfig);
+  const query = util.promisify(connection.query).bind(connection);
+  const end = util.promisify(connection.end).bind(connection);
+  const dataQuery = `
+    select DATE_FORMAT(trade_date,'%Y-%m-%d') as trade_date,pos_count,neg_count
+    ,ratio_pos_to_neg from stockdata.stock_daily_up_down_ratio 
+    where trade_date BETWEEN ? and ? order by trade_date desc;
+  `;
+  try {
+    const results = await query(dataQuery, [startDate, endDate]);
     // 获取字段名
     const fields = Object.keys(results[0] || {});
     const headers = fields.map(field => field.trim());
