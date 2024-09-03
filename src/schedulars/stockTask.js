@@ -123,11 +123,13 @@ exports.syncDailyStockTradeDataTask = async (stockService, stockModel, logger, s
 exports.calcHistoryDailyMinCloseTask = async (stockService, logger) => {
   const MAX_RETRIES = 2; // 最多重试次数
   let retries = 0;
-
+  const latestTradeDate = await stockService.getLatestTradeDate();
   while (retries <= MAX_RETRIES) {
     try {
       await withTimeout(stockService.calcStockWarningHistoryMinService(), TIMEOUT);
       logger.info("计算历史最低值过程已完成");
+      await withTimeout(stockAnalysis.calcDailyUpDownCountService(latestTradeDate), TIMEOUT);
+      logger.info("计算每日涨跌数已完成");
       break; // 成功后退出循环
     } catch (error) {
       if (retries === MAX_RETRIES) {
@@ -139,3 +141,4 @@ exports.calcHistoryDailyMinCloseTask = async (stockService, logger) => {
     }
   }
 };
+

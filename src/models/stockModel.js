@@ -539,6 +539,50 @@ exports.getKlineData = async (code, startDate, endDate) => {
   }
 }
 
+//计算每日涨跌数
+exports.calcDailyUpDownCount = async (startDate, endDate) => {
+  endDate = endDate || startDate;
+  const connection = mysql.createConnection(dbConfig);
+  const query = util.promisify(connection.query).bind(connection);
+  const end = util.promisify(connection.end).bind(connection);
+  const insertQuery = `
+    insert ignore into stockdata.stock_daily_up_down_ratio
+    WITH daily_changes AS (
+        -- 首先获取每天所有股票的涨跌情况
+        SELECT 
+            trade_date,
+            SUM(CASE WHEN pct_ratio > 0 THEN 1 ELSE 0 END) AS pos_count,
+            SUM(CASE WHEN pct_ratio < 0 THEN 1 ELSE 0 END) AS neg_count
+        FROM 
+            stockdata.stock_history_trade sht where trade_date between ? and ?
+        GROUP BY 
+            trade_date
+    )
+    -- 最终结果集，展示每一天正负变化的数量及比例
+    SELECT 
+        dc.trade_date,
+        dc.pos_count,
+        dc.neg_count,
+        CASE 
+            WHEN dc.pos_count = 0 OR dc.neg_count = 0 THEN NULL
+            ELSE CAST(dc.pos_count AS REAL) / dc.neg_count
+        END AS ratio_pos_to_neg
+    FROM 
+        daily_changes dc;
+  `;
+  try {
+    await query(insertQuery, [startDate, endDate]);
+  } catch (error) {
+    logger.error('calcDailyUpDownCount failed:::' + error.message);
+    throw error;
+  } finally {
+    await end();
+  }
+}
+
+
+
+
 //获取每日涨跌数
 exports.getStockUpDownRatio = async (startDate, endDate) => {
   const connection = mysql.createConnection(dbConfig);
@@ -809,3 +853,4 @@ exports.deleteStockComment = async (uuid) => {
     await end();
   }
 };
+

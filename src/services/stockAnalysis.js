@@ -2,7 +2,6 @@ const stockModel = require("../models/stockModel.js");
 const logger = require("../../config/logconfig.js");
 const moment = require('moment');
 const _ = require("lodash");
-const { log } = require("util");
 
 exports.getHistoryTradeDataService = async (startDate, endDate) => {
     const result = await stockModel.getHistoryTradeData(startDate, endDate);
@@ -130,7 +129,7 @@ exports.volumeEnergyService = async (dataGrouped, delay) => {
                 const deadline = moment(tradeDate[delay - 24 < 0 ? 0 : delay - 24]).format('YYYY-MM-DD');
                 const analyseDatePrice = closePrice[0];
                 const purchasePrice = (closePrice[0] + openPrice[0]) / 2;
-                seedStock.push([name, analyseDate, oneMonthChange, deadline, analyseDatePrice, purchasePrice, 'volumnEnerge',0]);
+                seedStock.push([name, analyseDate, oneMonthChange, deadline, analyseDatePrice, purchasePrice, 'volumnEnerge', 0]);
             } catch (error) {
                 logger.info(error.message);
                 continue;
@@ -167,10 +166,10 @@ exports.stockWarningService = async (dataGrouped) => {
 
         // 获取今天的收盘价
         const todayClosePrice = group[0].close;
-        if(todayClosePrice<=2 || todayClosePrice > 100){
+        if (todayClosePrice <= 2 || todayClosePrice > 100) {
             continue
         }
-        
+
         const todayOpenPrice = group[0].open;
         const todayLowPrice = group[0].low;
         const todayHighPrice = group[0].high;
@@ -198,11 +197,20 @@ exports.stockWarningService = async (dataGrouped) => {
     if (seedStock) {
         await stockModel.setStockWarningData(seedStock);
         logger.info("预警数据插入已完成...");
-    }else{
+    } else {
         logger.info('无数据')
     }
 
 
 };
 
-
+//股票涨跌数计算服务
+exports.calcDailyUpDownCountService = async (startDate, endDate) => {
+    try {
+        return await stockModel.calcDailyUpDownCount(startDate, endDate);
+      } catch (error) {
+        throw new Error(
+          "Error Excuting calcDailyUpDownCountService::" + error.message
+        );
+      }
+}

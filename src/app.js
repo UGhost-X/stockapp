@@ -22,7 +22,7 @@ exports.syncDailyStockTradeDataSchedular = async () => {
 
 exports.calcHistoryMinCloseSchedular = async () => {
   logger.info("calcHistoryMinCloseSchedular had registed")
-  cron.schedule("30 18 * * *", async () => {
+  cron.schedule("05 22 * * *", async () => {
     logger.info("Calc History Min Close Task Starting....");
     await stockTask.calcHistoryDailyMinCloseTask(stockService, logger);
   });
