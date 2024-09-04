@@ -5,6 +5,7 @@ const logger = require("../config/logconfig");
 const cron = require("node-cron");
 const stockTask = require('./schedulars/stockTask')
 const stockService = require("./services/scrapDataService");
+const stockAnalysis = require("./services/stockAnalysis");
 const sendMailService = require("./services/mailSMTPService");
 const stockModel = require("./models/stockModel");
 const cors = require('cors');
@@ -14,9 +15,9 @@ global.syncDailyTradeInfoEmailContent = "";
 
 exports.syncDailyStockTradeDataSchedular = async () => {
   logger.info("syncDailyStockTradeDataSchedular had registed")
-  cron.schedule("0 18 * * *", async () => {
+  cron.schedule("08 00 * * *", async () => {
     logger.info("Get All Stocks Data Task Starting....");
-    await stockTask.syncDailyStockTradeDataTask(stockService, stockModel, logger, sendMailService);
+    await stockTask.syncDailyStockTradeDataTask(stockService, stockModel, logger, sendMailService, stockAnalysis);
   });
 }
 
