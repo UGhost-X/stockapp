@@ -160,15 +160,7 @@ const chartOption = (data, startValue, endValue, stockTitle) => {
         tooltip: {
             trigger: 'axis',
             axisPointer: {
-                type: 'cross',
-                link: [
-                    {
-                        xAxisIndex: 'all'
-                    }
-                ],
-                label: {
-                    backgroundColor: '#777',
-                }
+                type: 'cross'
             },
             borderWidth: 1,
             borderColor: '#ccc',
@@ -186,26 +178,67 @@ const chartOption = (data, startValue, endValue, stockTitle) => {
             formatter: function (data) {
                 let result = '';
                 let content = '';
+                let pointDate = ''
                 data.map((item, index) => {
+                    let marker = item.marker;
+                    let markerSub = '';
+                    let seriesName = item.seriesName;
+                    pointDate = item.axisValue
+                    let name = ['开盘价', '收盘价', '最低价', '最高价', '涨幅']
                     if (item.data.empty) {
                         result = ''
                     } else {
-                        let marker = item.marker;
-                        let seriesName = item.seriesName;
-                        let name = ['开盘价', '收盘价', '最低价', '最高价', '涨幅', '交易量']
-                        if (index === 0) {
+                        if (index === 0 && item.componentIndex === 0) {
+                            content += `<span style='font-size:16px;'>${pointDate}</span><br/>`
                             content += `<span style='font-size:16px;'>${marker} ${seriesName}</span><br/>`
-                            marker = marker.replaceAll('10px', '5px')
-                            for (let i = 0; i < item.data.length - 1; i++) {
-                                content += `${marker} ${name[i]}<div style='font-size:16px; float:right;font-weight: bold;font-family: 微软雅黑'>${item.data[i + 1]}</div><br/>`
+                            markerSub = marker.replaceAll('10px', '5px')
+                            for (let i = 0; i < item.data.length - 2; i++) {
+                                content += `${markerSub} ${name[i]}<div style='font-size:16px; float:right;font-weight: bold;font-family: 微软雅黑'>${item.data[i + 1]}</div><br/>`
                             }
                             return
                         }
-                        content += `${marker} ${seriesName}<div style='font-size:16px; float:right;font-weight: bold;font-family: 微软雅黑'>${item.data}</div><br/>`
-                        result = `<div style='font-size: 14px;width: 150px'>${item.name}</div>${content}`;
+
+                        if (index === 1 && item.componentIndex === 0) {
+                            content += `<span style='font-size:16px;'>${marker} ${seriesName}</span><br/>`
+                            markerSub = marker.replaceAll('10px', '5px')
+                            for (let i = 0; i < item.data.length - 2; i++) {
+                                content += `${markerSub} ${name[i]}<div style='font-size:16px; float:right;font-weight: bold;font-family: 微软雅黑'>${item.data[i + 1]}</div><br/>`
+                            }
+                            return
+                        }
+
+                        if (seriesName !== 'Volume' && seriesName !== 'upCount') {
+                            content += `${marker} ${seriesName}<div style='font-size:16px; float:right;font-weight: bold;font-family: 微软雅黑'>${item.data}</div><br/>`
+                        }
+                        if (seriesName === 'MA169') {
+                            content += `<br/>`
+                        }
+                        if (seriesName === 'Volume') {
+                            content += `<span style='font-size:16px;'>${pointDate}</span><br/>`
+                            content += `<span style='font-size:16px;'>${marker}  交易量</span><div style='font-size:16px; float:right;font-weight: bold;font-family: 微软雅黑'>${formatNumber.format(item.data[1])}</div><br/><br/>`
+                        }
+                        if (seriesName === 'upCount') {
+                            content += `<span style='font-size:16px;'>${pointDate}</span><br/>`
+                            content += `<span style='font-size:16px;'>${marker}  上涨家数</span><div style='font-size:16px; float:right;font-weight: bold;font-family: 微软雅黑'>${item.data}</div><br/><br/>`
+                        }
+
                     }
+
+                    result = `${content}`;
+
                 })
+
                 return result;
+            }
+        },
+        axisPointer: {
+            link: [
+                {
+                    xAxisIndex: 'all'
+                }
+            ],
+            label: {
+                backgroundColor: '#777'
             }
         },
         legend: {
@@ -234,19 +267,19 @@ const chartOption = (data, startValue, endValue, stockTitle) => {
             right: '2%',
             bottom: '20%',
             top: '5%',
-            height: '80%'
+            height: '70%'
         },
         {
             left: '15%',
             right: '2%',
-            top: '80%',
+            top: '75%',
             height: '10%'
         },
         {
             left: '15%',
             right: '2%',
-            top: '90%',
-            height: '10%'
+            top: '85%',
+            height: '15%'
         }],
         xAxis: [
             {
@@ -578,7 +611,7 @@ onMounted(
     width: 109vw;
     height: 30vw;
     left: -6vw;
-    min-height: 800px;
+    min-height: 900px;
     overflow: hidden;
 }
 </style>
