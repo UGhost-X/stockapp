@@ -59,8 +59,8 @@ exports.getStockHistoryTradeDataFromDF = async (req, res) => {
 };
 
 //获取股票基本信息
-exports.getStockBasicInfoFromDB = async (req,res) =>{
-  const {fields} = req.body
+exports.getStockBasicInfoFromDB = async (req, res) => {
+  const { fields } = req.body
   try {
     const results = await stockService.getAllStockBasicInfo([...fields]);
     res.status(200).json({
@@ -188,9 +188,9 @@ exports.getStockUpDownRatioFromDB = async (req, res) => {
 
 //获取股票分析数据
 exports.getStockAnalyseDate = async (req, res) => {
-  const { startDate, endDate } = req.body;
+  const { analyseMethod, startDate, endDate } = req.body;
   try {
-    const results = await stockService.getAnalyseStockListService(startDate, endDate);
+    const results = await stockService.getAnalyseStockListService(analyseMethod, startDate, endDate);
     res.status(200).json({
       data: results,
     });
@@ -390,9 +390,9 @@ exports.getDailyTradeStockAmountTest = async (req, res) => {
 
 //添加股票评论
 exports.addStockCommentData = async (req, res) => {
-  const { uuid,code, analyseDate, analyseMethod, author, commentContent } = req.body;
+  const { uuid, code, analyseDate, analyseMethod, author, commentContent } = req.body;
   try {
-    await stockService.addStockCommentService(uuid,code, analyseDate, analyseMethod, author, commentContent);
+    await stockService.addStockCommentService(uuid, code, analyseDate, analyseMethod, author, commentContent);
     res.status(200).json({
       message: "评论数据更新成功",
     });

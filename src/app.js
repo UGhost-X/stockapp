@@ -29,6 +29,13 @@ exports.calcHistoryMinCloseSchedular = async () => {
   });
 }
 
+exports.calc169DayRevertSchedular = async () => {
+  logger.info("calc169DayRevertSchedular had registed")
+  cron.schedule("40 18 * * *", async () => {
+    logger.info("Calc Ma21 Revert Task Starting....");
+    await stockTask.calc169DayRevertTask(stockService, stockAnalysis, logger);
+  });
+}
 const app = express();
 app.use(cors());
 app.use(bodyParser.json());

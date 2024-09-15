@@ -151,6 +151,94 @@ exports.volumeEnergyService = async (dataGrouped, delay) => {
     }
 };
 
+exports.ma169RevertService = async (dataGrouped, delay) => {
+    const startTimeAnalyse = Date.now();
+    const seedStock = [];
+    while (delay > -1) {
+        let analyseDate = '';
+        for (const [name, group] of Object.entries(dataGrouped)) {
+            if (!group[delay + 360]) {
+                continue;
+            }
+            const evaluateInterval = group.slice(delay, delay + 360);
+            const closePrice = evaluateInterval.map(item => item.close);
+            const lowPrice = evaluateInterval.map(item => item.low);
+            const openPrice = evaluateInterval.map(item => item.open);
+            try {
+                if (!group[delay] || !('trade_date' in group[delay]) || group[delay].trade_date === '') {
+                    continue;
+                }
+
+                const ma169 = [];
+                for (let i = 0; i < 100; i++) {
+                    ma169.push(_.mean(closePrice.slice(i, i + 169)).toFixed(3));
+                }
+
+                if (ma169[1] / closePrice[1] > 1.01) {
+                    continue
+                }
+
+                if (ma169[1] / lowPrice[1] < 0.99) {
+                    continue
+                }
+
+                if (ma169[1] < ma169[81] || ma169[1] / ma169[81] < 1.05) {
+                    continue
+                }
+                if (closePrice[0] / ma169[0] < 0.99) {
+                    continue
+                }
+
+                if (closePrice[0] < openPrice[0]) {
+                    continue
+                }
+
+                // 如果存在任何一个 ma169 元素除以对应 closePrice 小于 1.01，则跳过后续操作
+                let shouldContinue = false;
+                for (let i = 1; i < ma169.length; i++) {
+                    if (closePrice[i] / ma169[i] < 0.97) {
+                        shouldContinue = true;
+                        break; // 发现符合条件的元素后跳出循环
+                    }
+                }
+
+                if (shouldContinue) {
+                    continue; // 跳过后续的处理
+                }
+
+                const tradeDate = group.map(item => item.trade_date);
+                analyseDate = moment(tradeDate[delay]).format('YYYY-MM-DD');
+                const closePriceMeta = group.map(item => item.close);
+                const openPriceMeta = group.map(item => item.open);
+                let oneMonthChange = delay - 24 < 0
+                    ? closePriceMeta[0] / openPriceMeta[delay - 1]
+                    : closePriceMeta[delay - 24] / openPriceMeta[delay - 1];
+                oneMonthChange = isNaN(oneMonthChange) || oneMonthChange === 'undefined' || oneMonthChange === '' ? 0 : Math.round(oneMonthChange * 100 - 100, 3);
+                const deadline = moment(tradeDate[delay - 24 < 0 ? 0 : delay - 24]).format('YYYY-MM-DD');
+                const analyseDatePrice = closePrice[0];
+                const purchasePrice = (closePrice[0] + openPrice[0]) / 2;
+                seedStock.push([name, analyseDate, oneMonthChange, deadline, analyseDatePrice, purchasePrice, '169DayRevert', 0]);
+            } catch (error) {
+                logger.info(error.message);
+                continue;
+            }
+
+        }
+        const endTimeAnalyse = Date.now();
+        if (analyseDate === '') {
+            logger.info("今日无数据");
+        } else {
+            logger.info(`${analyseDate} - 21日反弹法分析耗时: ${endTimeAnalyse - startTimeAnalyse} ms`);
+        }
+
+        delay -= 1;
+    }
+    if (seedStock) {
+        await stockModel.setAnalyseData(seedStock);
+        logger.info("数据插入已完成...");
+    }
+};
+
 //股票预警计算服务
 exports.stockWarningService = async (dataGrouped) => {
     const seedStock = [];
@@ -208,9 +296,9 @@ exports.stockWarningService = async (dataGrouped) => {
 exports.calcDailyUpDownCountService = async (startDate, endDate) => {
     try {
         return await stockModel.calcDailyUpDownCount(startDate, endDate);
-      } catch (error) {
+    } catch (error) {
         throw new Error(
-          "Error Excuting calcDailyUpDownCountService::" + error.message
+            "Error Excuting calcDailyUpDownCountService::" + error.message
         );
-      }
+    }
 }

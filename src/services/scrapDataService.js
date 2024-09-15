@@ -129,9 +129,9 @@ exports.getDailyTradeStockAmountService = (tradeData) => {
 }
 
 //获取股票分析结果数据服务
-exports.getAnalyseStockListService = async (analyseDateStart, analyseDateEnd) => {
+exports.getAnalyseStockListService = async (analyseMethod, analyseDateStart, analyseDateEnd) => {
   try {
-    const results = await stockModel.getAnalseStockList(analyseDateStart, analyseDateEnd);
+    const results = await stockModel.getAnalseStockList(analyseMethod, analyseDateStart, analyseDateEnd);
     return results
   } catch (error) {
     throw new Error(

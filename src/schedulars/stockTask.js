@@ -9,7 +9,7 @@ function sleep(ms) {
 const TIMEOUT = 1000 * 60 * 30; // 30分钟
 
 // 重试机制
-const retry = async (fn, retries = 3, interval = 1000*30) => {
+const retry = async (fn, retries = 3, interval = 1000 * 30) => {
   for (let i = 0; i < retries; i++) {
     try {
       return await fn();
@@ -54,11 +54,25 @@ exports.syncDailyStockTradeDataTask = async (stockService, stockModel, logger, s
   const latestDate = moment(latestTradeDate).format("YYYY-MM-DD");
 
   try {
-    // if (moment().isAfter(latestDate, 'day')) {
-    //   logger.info("当前非交易日或非交易时间");
-    //   return null;
-    // }
+    if (moment().isAfter(latestDate, 'day')) {
+      logger.info("当前非交易日或非交易时间");
+      return null;
+    }
+    // 尝试获取指定日期的运行状态
+    const result = await retry(() => withTimeout(stockModel.getStockRunningStatus(latestTradeDate), TIMEOUT));
 
+    if (result.length === 0) {
+      // 如果没有找到记录，则插入一条新记录
+      logger.info(`No running status found for date ${latestTradeDate}, inserting a new record.`);
+      await retry(() => withTimeout(stockModel.setStockRunningStatus(latestDate, 0), TIMEOUT));
+    } else {
+      const runningStatus = result[0].running_status;
+      logger.info(`Current running status: ${runningStatus}`);
+      if (runningStatus === 1) {
+        logger.info("今日任务已完成");
+        return null;
+      }
+    }
     // 获取所有股票的当日交易数据并保存
     const data = await retry(() => withTimeout(stockService.getAllStcokDailyTradeData(), TIMEOUT));
     await retry(() => withTimeout(stockService.saveAllStcokDailyTradeData(latestTradeDate, data), TIMEOUT));
@@ -111,14 +125,13 @@ exports.syncDailyStockTradeDataTask = async (stockService, stockModel, logger, s
     let tableHtml2 = await retry(() => withTimeout(sendMailService.getAnalyseTableTemplete(dataAnalyseList2.headers, dataAnalyseList2.rows, `${latestDate} 前数据分析跟踪情况`), TIMEOUT));
     let tableHtml = tableHtml1 + tableHtml2;
 
-    if (dataAnalyseList1.rows.length === 0) {
-      tableHtml = `
-        <h3> 所有数据已经同步完成,同步数据量:: ${syncAmount[0].amount},今日无筛选结果 </h3>
-      `+ tableHtml2;
-    }
-
     // 发送邮件
     const syncAmount = await retry(() => withTimeout(stockService.getDailyTradeStockAmountService(latestDate), TIMEOUT));
+    if (dataAnalyseList1.rows.length === 0) {
+      tableHtml = `
+          <h3> 所有数据已经同步完成,同步数据量:: ${syncAmount[0].amount},今日无筛选结果 </h3>
+        `+ tableHtml2;
+    }
     await retry(() => withTimeout(sendMailService.sendMailService(
       `${latestDate} 股票数据情况`,
       `所有数据已经同步完成,同步数据量::${syncAmount[0].amount}`,
@@ -126,6 +139,7 @@ exports.syncDailyStockTradeDataTask = async (stockService, stockModel, logger, s
     ), TIMEOUT));
 
     logger.info(`${latestDate} 股票数据情况已发送`);
+    await retry(() => withTimeout(stockModel.setStockRunningStatus(latestDate, 1), TIMEOUT));
 
   } catch (error) {
     logger.error(`获取并保存所有股票交易数据失败:`, error.message);
@@ -160,8 +174,22 @@ exports.calcHistoryDailyMinCloseTask = async (stockService, logger) => {
       }
       retries++;
       logger.warn(`计算历史最低值过程失败，正在进行第${retries + 1}次重试`);
-      sleep(1000*120)
+      sleep(1000 * 120)
     }
   }
 };
 
+exports.calc169DayRevertTask = async (stockService, stockAnalysis, logger) => {
+  logger.info("begining...")
+  const latestTradeDate = await retry(() => stockService.getLatestTradeDate());
+  const latestDate = moment(latestTradeDate).format("YYYY-MM-DD");
+  // 开始数据的分析
+  const historyStartDate = moment(latestDate).subtract(30, 'months').format("YYYY-MM-DD");
+  const dataGrouped = await retry(() => withTimeout(stockAnalysis.getHistoryTradeDataService(historyStartDate, latestDate), TIMEOUT));
+  logger.info("获取数据已完成...");
+
+  // 分析数据
+  await retry(() => withTimeout(stockAnalysis.ma169RevertService(dataGrouped, 80), TIMEOUT));
+  logger.info("169日反弹法数据分析已完成...");
+
+}

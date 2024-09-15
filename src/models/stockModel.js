@@ -293,7 +293,7 @@ exports.getDailyTradeStockAmount = async (tradeData) => {
 }
 
 // 获取股票任意时长分析数据
-exports.getAnalseStockList = async (analyseDateStart, analyseDateEnd) => {
+exports.getAnalseStockList = async (analyseMethod, analyseDateStart, analyseDateEnd) => {
   analyseDateEnd = analyseDateEnd || analyseDateStart;
 
   // 创建数据库连接
@@ -314,12 +314,12 @@ exports.getAnalseStockList = async (analyseDateStart, analyseDateEnd) => {
     , sac.anylse_method '分析方法'
     FROM stockdata.stock_analyse_collection sac
     INNER JOIN stockdata.stock_basic_info sbi ON sac.stock_code = sbi.stock_code
-    WHERE sac.analyse_date BETWEEN ? AND ? ORDER BY sac.one_month_change desc, sac.analyse_date,sbi.stock_code;
+    WHERE sac.anylse_method=? and sac.analyse_date BETWEEN ? AND ? ORDER BY sac.one_month_change desc, sac.analyse_date,sbi.stock_code;
   `;
 
   try {
     // 执行查询
-    const results = await query(getQuery, [analyseDateStart, analyseDateEnd]);
+    const results = await query(getQuery, [analyseMethod, analyseDateStart, analyseDateEnd]);
     // 获取字段名
     const fields = Object.keys(results[0] || {});
     const headers = fields.map(field => field.trim());
@@ -854,3 +854,40 @@ exports.deleteStockComment = async (uuid) => {
   }
 };
 
+//获取任务完成情况
+exports.getStockRunningStatus = async (tradeDate) => {
+  const connection = mysql.createConnection(dbConfig);
+  const query = util.promisify(connection.query).bind(connection);
+  const end = util.promisify(connection.end).bind(connection);
+  const dataquery = `
+  select running_status from stock_task_running_status where stock_date = ?
+  `;
+
+  try {
+    return await query(dataquery, [tradeDate]);
+  } catch (error) {
+    logger.error('getStockRunningStatus failed:::' + error.message);
+    throw error;
+  } finally {
+    await end();
+  }
+};
+
+//保存任务完成情况
+exports.setStockRunningStatus = async (tradeDate, runningStatus) => {
+  const connection = mysql.createConnection(dbConfig);
+  const query = util.promisify(connection.query).bind(connection);
+  const end = util.promisify(connection.end).bind(connection);
+  const insertquery = `
+  INSERT INTO stock_task_running_status (stock_date, running_status) VALUES (?, ?) ON DUPLICATE KEY UPDATE
+  running_status = VALUES(running_status)`;
+  try {
+    await query(insertquery, [tradeDate, runningStatus]);
+    return { success: true };
+  } catch (error) {
+    logger.error('setStockRunningStatus failed:::' + error.message);
+    throw error;
+  } finally {
+    await end();
+  }
+};
