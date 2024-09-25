@@ -5,8 +5,12 @@
       <a-row>
         <a-col :span="6">
           <div class="functionalarea" style="padding-top: 5px">
-            <a-switch v-model:checked="checked" checked-children="全部展示" un-checked-children="部分展示"
-              @change="switchChangeEvent" />
+            <a-space :size="30">
+              <a-switch v-model:checked="checked" checked-children="全部展示" un-checked-children="部分展示"
+                @change="switchChangeEvent" />
+              <a-select ref="select" v-model:value="methodValue" style="width: 160px" :options="methodOption"
+                @focus="methodFocus" @change="methodHandleChange"></a-select>
+            </a-space>
           </div>
         </a-col>
         <a-col :span="12">
@@ -28,7 +32,8 @@
           <div class="cardscontent">
             <a-skeleton v-show="loadKLine" active :paragraph="{ rows: 15 }" />
             <CommonKlineChart v-if="!loadKLine" :stockCode="stockCode" :stockTitle="stockTitle" :endDate="endDate"
-              @closeSkeleton="handleEmitEven"  @click.middle="nextOption" @contextmenu="showModal" ref="commonKlineChart" />
+              @closeSkeleton="handleEmitEven" @click.middle="nextOption" @contextmenu="showModal"
+              ref="commonKlineChart" />
             <a-modal v-model:open="addCandidatorModal" title="是否加入后选股" centered @ok="handleModalOkEven">
               <span> 是否加入后续股 </span>
             </a-modal>
@@ -128,6 +133,7 @@ import 'dayjs/locale/zh-cn';
 import { v4 as uuidv4 } from 'uuid';
 // 设置 dayjs 的全局语言为中文
 dayjs.locale('zh-cn');
+import type { SelectProps } from 'ant-design-vue';
 
 
 const checked = ref<boolean>(false);
@@ -153,6 +159,31 @@ const switchHotkey = (event: KeyboardEvent) => {
     }
   }
 };
+
+//分析方法选择区
+const methodValue = ref('volumnEnerge');
+const methodOption = ref<SelectProps['options']>([
+  {
+    value: 'volumnEnerge',
+    label: '量能法',
+  },
+  {
+    value: '169DayRevert',
+    label: '169日反转法',
+  },
+]);
+
+const methodFocus = () => {
+  // console.log('focus');
+};
+
+const methodHandleChange = async (value: string) => {
+  methodValue.value = value;
+  options.value = await fetchOptions(methodValue.value, selectedValue.value.split(' ')[2], selectedValue.value.split(' ')[2]);
+  selectedValue.value = options.value[0].value;
+  titleChange(selectedValue.value)
+};
+
 // 标题选项控制
 const titleChange = async (value: string) => {
   stockCode.value = value.split(' ')[0];
@@ -162,7 +193,7 @@ const titleChange = async (value: string) => {
   } else {
     endDate.value = '2050-12-31'
   }
-  await fetchStockComments(stockCode.value, selectedValue.value.split(' ')[2], 'volumnEnerge', 'UGhost');
+  await fetchStockComments(stockCode.value, selectedValue.value.split(' ')[2], methodValue.value, 'UGhost');
 };
 const selectedValue = ref('');
 
@@ -172,9 +203,10 @@ interface Option {
 }
 
 
-const fetchOptions = async (startDate: string, endDate: string) => {
+const fetchOptions = async (analyseMethod: string, startDate: string, endDate: string) => {
   try {
     const response = await axios.post('/api/getStockAnalyseDate', {
+      analyseMethod: analyseMethod,
       startDate: startDate,
       endDate: endDate
     });
@@ -238,7 +270,7 @@ const rangePresets = ref([
 type RangeValue = [Dayjs, Dayjs];
 const onRangeChange = async (dates: RangeValue, dateStrings: string[]) => {
   if (dates) {
-    options.value = await fetchOptions(dateStrings[0], dateStrings[1]);
+    options.value = await fetchOptions(methodValue.value, dateStrings[0], dateStrings[1]);
     if (!options || options.value === undefined) {
       message.error("日期切换失败，没有获取到 options")
       return
@@ -435,7 +467,7 @@ const nextOption = async () => {
   } else {
     endDate.value = '2050-12-31'
   }
-  await fetchStockComments(stockCode.value, selectedValue.value.split(' ')[2], 'volumnEnerge', 'UGhost');
+  await fetchStockComments(stockCode.value, selectedValue.value.split(' ')[2], methodValue.value, 'UGhost');
 }
 
 watch(loadKLine, async () => {
@@ -545,7 +577,7 @@ onMounted(async () => {
   let latestTradeDate = await getLatestTradeDate();
 
   while (true) {
-    const fetchedOptions = await fetchOptions(latestTradeDate, latestTradeDate);
+    const fetchedOptions = await fetchOptions(methodValue.value, latestTradeDate, latestTradeDate);
 
     if (fetchedOptions && fetchedOptions.length > 0) {
       options.value = fetchedOptions;
@@ -566,7 +598,7 @@ onMounted(async () => {
   }
   loadKLine.value = false;
   loadData();
-  await fetchStockComments(stockCode.value, selectedValue.value.split(' ')[2], 'volumnEnerge', 'UGhost');
+  await fetchStockComments(stockCode.value, selectedValue.value.split(' ')[2], methodValue.value, 'UGhost');
   window.addEventListener('keydown', switchHotkey);
 });
 
