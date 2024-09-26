@@ -128,21 +128,19 @@ exports.syncDailyStockTradeDataTask = async (stockService, stockModel, logger, s
     // 发送邮件
     const syncAmount = await retry(() => withTimeout(stockService.getDailyTradeStockAmountService(latestDate), TIMEOUT));
 
-    logger.info(dataAnalyseList1.rows)
-
     if (dataAnalyseList1.rows.length === 0) {
       tableHtml = `
           <h3> 所有数据已经同步完成,同步数据量:: ${syncAmount[0].amount},今日无筛选结果 </h3>
         `+ tableHtml2;
     }
-    // await retry(() => withTimeout(sendMailService.sendMailService(
-    //   `${latestDate} 股票数据情况`,
-    //   `所有数据已经同步完成,同步数据量::${syncAmount[0].amount}`,
-    //   tableHtml
-    // ), TIMEOUT));
+    await retry(() => withTimeout(sendMailService.sendMailService(
+      `${latestDate} 股票数据情况`,
+      `所有数据已经同步完成,同步数据量::${syncAmount[0].amount}`,
+      tableHtml
+    ), TIMEOUT));
 
-    // logger.info(`${latestDate} 股票数据情况已发送`);
-    // await retry(() => withTimeout(stockModel.setStockRunningStatus(latestDate, 1), TIMEOUT));
+    logger.info(`${latestDate} 股票数据情况已发送`);
+    await retry(() => withTimeout(stockModel.setStockRunningStatus(latestDate, 1), TIMEOUT));
 
   } catch (error) {
     logger.error(`获取并保存所有股票交易数据失败:`, error.message);
