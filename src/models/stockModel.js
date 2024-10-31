@@ -351,7 +351,7 @@ exports.getHistoryTradeData = async (startDate, endDate) => {
   const end = util.promisify(connection.end).bind(connection);
 
   const dataQuery = `
-    SELECT stock_code, stock_ch_name,trade_date, close, high, open, pct_ratio ,low
+    SELECT stock_code, stock_ch_name,trade_date, close, high, open, pct_ratio ,low,volume
     FROM stockdata.stock_history_trade
     WHERE  (trade_date BETWEEN ? AND ? ) order by trade_date desc ,stock_code
   `;
@@ -375,6 +375,10 @@ exports.setAnalyseData = async (data) => {
   const connection = mysql.createConnection(dbConfig);
   const query = util.promisify(connection.query).bind(connection);
   const end = util.promisify(connection.end).bind(connection);
+  if (!data || data.length === 0) {
+    logger.info('No data to insert into stockdata.stock_analyse_collection');
+    return;
+  }
   const insertQuery = `
    INSERT ignore INTO stockdata.stock_analyse_collection (stock_code, analyse_date, one_month_change, one_month_change_date,analyse_day_price, purchase_price,anylse_method,is_mark)
         VALUES ?

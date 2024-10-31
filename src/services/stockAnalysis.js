@@ -228,7 +228,7 @@ exports.ma169RevertService = async (dataGrouped, delay) => {
         if (analyseDate === '') {
             logger.info("今日无数据");
         } else {
-            logger.info(`${analyseDate} - 21日反弹法分析耗时: ${endTimeAnalyse - startTimeAnalyse} ms`);
+            logger.info(`${analyseDate} - 169DayRevert: ${endTimeAnalyse - startTimeAnalyse} ms`);
         }
 
         delay -= 1;
@@ -302,3 +302,78 @@ exports.calcDailyUpDownCountService = async (startDate, endDate) => {
         );
     }
 }
+
+//一进二回涨法
+exports.one2TwoRaiseService = async (dataGrouped, delay) => {
+    const startTimeAnalyse = Date.now();
+    const seedStock = [];
+    while (delay > -1) {
+        let analyseDate = '';
+        for (const [name, group] of Object.entries(dataGrouped)) {
+            if (!group[delay + 10]) {
+                continue;
+            }
+            const evaluateInterval = group.slice(delay, delay + 10);
+            const volume = evaluateInterval.map(item => item.volume);
+            const raiseRange = evaluateInterval.map(item => item.pct_ratio);
+            const closePrice = evaluateInterval.map(item => item.close);
+            const openPrice = evaluateInterval.map(item => item.open);
+            try {
+                if (!group[delay] || !('trade_date' in group[delay]) || group[delay].trade_date === '') {
+                    continue;
+                }
+
+                if (raiseRange[2] < 9.89) {
+                    continue
+                }
+
+                if (raiseRange[1] > 0) {
+                    continue
+                }
+
+                // if (volume[2] / volume[0] < 2 || volume[2] / volume[1] < 2) {
+                //     continue
+                // }
+
+                if(Math.max(...raiseRange.slice(3, 20)) > 9.8){
+                    continue
+                }
+
+                if(Math.max(...raiseRange.slice(0, 2)) > 9.8){
+                    continue
+                }
+
+                const tradeDate = group.map(item => item.trade_date);
+                analyseDate = moment(tradeDate[delay]).format('YYYY-MM-DD');
+                const closePriceMeta = group.map(item => item.close);
+                const openPriceMeta = group.map(item => item.open);
+
+                let oneMonthChange = delay - 24 < 0
+                    ? closePriceMeta[0] / openPriceMeta[delay - 1]
+                    : closePriceMeta[delay - 24] / openPriceMeta[delay - 1];
+                oneMonthChange = isNaN(oneMonthChange) || oneMonthChange === 'undefined' || oneMonthChange === '' ? 0 : Math.round(oneMonthChange * 100 - 100, 3);
+                const deadline = moment(tradeDate[delay - 24 < 0 ? 0 : delay - 24]).format('YYYY-MM-DD');
+                const analyseDatePrice = closePrice[0];
+                const purchasePrice = (closePrice[0] + openPrice[0]) / 2;
+                seedStock.push([name, analyseDate, oneMonthChange, deadline, analyseDatePrice, purchasePrice, 'one2TwoRaise', 0]);
+            } catch (error) {
+                logger.info(error.message);
+                continue;
+            }
+
+        }
+        const endTimeAnalyse = Date.now();
+        if (analyseDate === '') {
+            logger.info("今日无数据");
+        } else {
+            logger.info(`${analyseDate} - 一进二回调分析耗时: ${endTimeAnalyse - startTimeAnalyse} ms`);
+        }
+
+        delay -= 1;
+    }
+    if (seedStock) {
+        await stockModel.setAnalyseData(seedStock);
+        logger.info("数据插入已完成...");
+    }
+};
+

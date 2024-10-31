@@ -32,10 +32,20 @@ exports.calcHistoryMinCloseSchedular = async () => {
 exports.calc169DayRevertSchedular = async () => {
   logger.info("calc169DayRevertSchedular had registed")
   cron.schedule("40 18 * * *", async () => {
-    logger.info("Calc Ma21 Revert Task Starting....");
+    logger.info("Calc 169DayRevertSchedular Task Starting....");
     await stockTask.calc169DayRevertTask(stockService, stockAnalysis, logger);
   });
 }
+
+exports.calcOne2TwoRaiseSchedular = async () => {
+  logger.info("calcOne2TwoRaiseTask had registed")
+  cron.schedule("21 10 * * *", async () => {
+    logger.info("Calc One2TwoRaiseTask Revert Task Starting....");
+    await stockTask.calcOne2TwoRaiseTask(stockService, stockAnalysis, logger);
+  });
+}
+
+
 const app = express();
 app.use(cors());
 app.use(bodyParser.json());

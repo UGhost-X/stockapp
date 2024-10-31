@@ -73,10 +73,6 @@ exports.getStockHistoryTradeData = async (secid, startDate, endDate, lmt) => {
     throw new Error("Error executing getStockHistoryTradeData: " + error.message);
   }
 };
-//从数据库获取个股历史数据
-exports.getStockHistoryTradeDataFromDB = async (secid, startDate, endDate) => {
-
-}
 
 //将个股历史数据写入数据库
 exports.saveStockHistoryTradeData = async (dataJson, connection) => {

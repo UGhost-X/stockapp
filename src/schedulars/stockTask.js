@@ -155,8 +155,6 @@ exports.syncDailyStockTradeDataTask = async (stockService, stockModel, logger, s
   }
 };
 
-
-
 exports.calcHistoryDailyMinCloseTask = async (stockService, logger) => {
   const MAX_RETRIES = 2; // 最多重试次数
   let retries = 0;
@@ -192,5 +190,22 @@ exports.calc169DayRevertTask = async (stockService, stockAnalysis, logger) => {
   // 分析数据
   await retry(() => withTimeout(stockAnalysis.ma169RevertService(dataGrouped, 80), TIMEOUT));
   logger.info("169日反弹法数据分析已完成...");
+
+}
+
+exports.calcOne2TwoRaiseTask = async (stockService, stockAnalysis, logger) => {
+  logger.info("begining...")
+  const latestTradeDate = await retry(() => stockService.getLatestTradeDate());
+  const latestDate = moment(latestTradeDate).format("YYYY-MM-DD");
+  // 开始数据的分析
+  const historyStartDate = moment(latestDate).subtract(5, 'months').format("YYYY-MM-DD");
+  logger.info(historyStartDate)
+
+  const dataGrouped = await retry(() => withTimeout(stockAnalysis.getHistoryTradeDataService(historyStartDate, latestDate), TIMEOUT));
+  logger.info("获取数据已完成...");
+
+  // 分析数据
+  await retry(() => withTimeout(stockAnalysis.one2TwoRaiseService(dataGrouped, 20), TIMEOUT));
+  logger.info("一进二法数据分析已完成...");
 
 }
