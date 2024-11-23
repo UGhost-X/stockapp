@@ -859,16 +859,16 @@ exports.deleteStockComment = async (uuid) => {
 };
 
 //获取任务完成情况
-exports.getStockRunningStatus = async (tradeDate) => {
+exports.getStockRunningStatus = async (tradeDate, taskName) => {
   const connection = mysql.createConnection(dbConfig);
   const query = util.promisify(connection.query).bind(connection);
   const end = util.promisify(connection.end).bind(connection);
   const dataquery = `
-  select running_status from stock_task_running_status where stock_date = ?
+  select running_status from stock_task_running_status where stock_date = ? and task_name = ?
   `;
 
   try {
-    return await query(dataquery, [tradeDate]);
+    return await query(dataquery, [tradeDate, taskName]);
   } catch (error) {
     logger.error('getStockRunningStatus failed:::' + error.message);
     throw error;
@@ -878,15 +878,15 @@ exports.getStockRunningStatus = async (tradeDate) => {
 };
 
 //保存任务完成情况
-exports.setStockRunningStatus = async (tradeDate, runningStatus) => {
+exports.setStockRunningStatus = async (tradeDate, runningStatus, taskName) => {
   const connection = mysql.createConnection(dbConfig);
   const query = util.promisify(connection.query).bind(connection);
   const end = util.promisify(connection.end).bind(connection);
   const insertquery = `
-  INSERT INTO stock_task_running_status (stock_date, running_status) VALUES (?, ?) ON DUPLICATE KEY UPDATE
+  INSERT INTO stock_task_running_status (stock_date, running_status) VALUES (?, ?,?) ON DUPLICATE KEY UPDATE
   running_status = VALUES(running_status)`;
   try {
-    await query(insertquery, [tradeDate, runningStatus]);
+    await query(insertquery, [tradeDate, runningStatus, taskName]);
     return { success: true };
   } catch (error) {
     logger.error('setStockRunningStatus failed:::' + error.message);

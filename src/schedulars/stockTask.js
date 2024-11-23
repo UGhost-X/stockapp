@@ -59,15 +59,15 @@ exports.syncDailyStockTradeDataTask = async (stockService, stockModel, logger, s
       return null;
     }
     // 尝试获取指定日期的运行状态
-    const result = await retry(() => withTimeout(stockModel.getStockRunningStatus(latestTradeDate), TIMEOUT));
+    const result = await retry(() => withTimeout(stockModel.getStockRunningStatus(latestTradeDate, 'volumnEnerge'), TIMEOUT));
 
     if (result.length === 0) {
       // 如果没有找到记录，则插入一条新记录
-      logger.info(`No running status found for date ${latestTradeDate}, inserting a new record.`);
-      await retry(() => withTimeout(stockModel.setStockRunningStatus(latestDate, 0), TIMEOUT));
+      logger.info(`${latestTradeDate} 任务执行状态未发现, 插入执行状态.`);
+      await retry(() => withTimeout(stockModel.setStockRunningStatus(latestDate, 0, 'volumnEnerge'), TIMEOUT));
     } else {
       const runningStatus = result[0].running_status;
-      logger.info(`Current running status: ${runningStatus}`);
+      logger.info(`当前执行状态: ${runningStatus}`);
       if (runningStatus === 1) {
         logger.info("今日任务已完成");
         return null;
@@ -116,7 +116,7 @@ exports.syncDailyStockTradeDataTask = async (stockService, stockModel, logger, s
     logger.info("更新分析数据跟踪情况已经完成");
 
     // 获取分析数据列表
-    const dataAnalyseList1 = await retry(() => stockService.getAnalyseStockListService('volumnEnerge',latestDate));
+    const dataAnalyseList1 = await retry(() => stockService.getAnalyseStockListService('volumnEnerge', latestDate));
     const dataAnalyseList2 = await retry(() => stockService.getLatestMonthAnalyseSituationService(latestDate));
     logger.info("获取分析数据列表已完成...");
 
@@ -140,7 +140,7 @@ exports.syncDailyStockTradeDataTask = async (stockService, stockModel, logger, s
     ), TIMEOUT));
 
     logger.info(`${latestDate} 股票数据情况已发送`);
-    await retry(() => withTimeout(stockModel.setStockRunningStatus(latestDate, 1), TIMEOUT));
+    await retry(() => withTimeout(stockModel.setStockRunningStatus(latestDate, 1, 'volumnEnerge'), TIMEOUT));
 
   } catch (error) {
     logger.error(`获取并保存所有股票交易数据失败:`, error.message);
@@ -155,26 +155,33 @@ exports.syncDailyStockTradeDataTask = async (stockService, stockModel, logger, s
   }
 };
 
+//历史最低收盘价
 exports.calcHistoryDailyMinCloseTask = async (stockService, logger) => {
-  const MAX_RETRIES = 2; // 最多重试次数
-  let retries = 0;
   const latestTradeDate = await stockService.getLatestTradeDate();
-  while (retries <= MAX_RETRIES) {
-    try {
-      await withTimeout(stockService.calcStockWarningHistoryMinService(), TIMEOUT);
-      logger.info("计算历史最低值过程已完成");
-      await withTimeout(stockAnalysis.calcDailyUpDownCountService(latestTradeDate), TIMEOUT);
-      logger.info("计算每日涨跌数已完成");
-      break; // 成功后退出循环
-    } catch (error) {
-      if (retries === MAX_RETRIES) {
-        logger.error("计算历史最低值过程失败:::", error);
-        break; // 最多重试次数后退出循环
-      }
-      retries++;
-      logger.warn(`计算历史最低值过程失败，正在进行第${retries + 1}次重试`);
-      sleep(1000 * 120)
+  // 尝试获取指定日期的运行状态
+  const result = await retry(() => withTimeout(stockModel.getStockRunningStatus(latestTradeDate, 'historyMinist'), TIMEOUT));
+
+  if (result.length === 0) {
+    // 如果没有找到记录，则插入一条新记录
+    logger.info(`${latestTradeDate} 计算历史最低收盘价与上涨数任务执行状态未发现, 插入执行状态.`);
+    await retry(() => withTimeout(stockModel.setStockRunningStatus(latestDate, 0, 'historyMinist'), TIMEOUT));
+  } else {
+    const runningStatus = result[0].running_status;
+    if (runningStatus === 1) {
+      logger.info("今日计算历史最低收盘价与上涨数任务已完成");
+      return null;
     }
+  }
+
+  try {
+    await withTimeout(stockService.calcStockWarningHistoryMinService(), TIMEOUT);
+    logger.info("计算历史最低值过程已完成");
+    await withTimeout(stockAnalysis.calcDailyUpDownCountService(latestTradeDate), TIMEOUT);
+    logger.info("计算每日涨跌数已完成");
+    await retry(() => withTimeout(stockModel.setStockRunningStatus(latestDate, 1, 'historyMinist'), TIMEOUT));
+  } catch (error) {
+    logger.error("今日计算历史最低收盘价与上涨数任务已完成过程失败:::", error);
+
   }
 };
 
